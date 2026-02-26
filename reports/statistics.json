@@ -1,0 +1,47 @@
+{
+  "class_balance": {
+    "positive": 1351,
+    "negative": 549714,
+    "ratio": 406.89415247964473
+  },
+  "nodule_sizes": {
+    "tiny": 49,
+    "small": 453,
+    "medium": 403,
+    "large": 281,
+    "min_mm": 3.253443196,
+    "max_mm": 32.27003025,
+    "mean_mm": 8.306527315553964,
+    "median_mm": 6.433600479000001
+  },
+  "subsets": {
+    "subset0": 89,
+    "subset1": 89,
+    "subset2": 89,
+    "subset3": 89,
+    "subset4": 89
+  },
+  "sample_scan": {
+    "shape": [
+      280,
+      512,
+      512
+    ],
+    "spacing": [
+      0.67578125,
+      0.67578125,
+      1.0000001192092896
+    ],
+    "origin": [
+      -178.348075,
+      -32.8987169,
+      -593.900024
+    ],
+    "hu_min": -1000,
+    "hu_max": 3000,
+    "size_mb": 140.0
+  },
+  "segmentations": {
+    "count": 0
+  }
+}

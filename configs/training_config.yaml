@@ -1,0 +1,107 @@
+# Training Configuration - Optimized for Dual Quadro RTX 6000
+
+# Model Configuration
+model:
+  name: "DCANet"
+  nodule_patch_size: 64
+  context_patch_size: 48
+  backbone: "efficientnet_b0"
+  num_classes: 1
+  nodule_feature_dim: 512
+  context_feature_dim: 256
+  fusion_dim: 256
+  num_attention_heads: 4
+  dropout: 0.5
+  prediction_dropout: 0.3
+  mc_dropout_passes: 5
+  slice_neighbors: 2  # ±2 slices for cross-slice attention
+
+# Training Configuration (Optimized for 24GB VRAM x2)
+training:
+  batch_size: 32
+  num_epochs: 60
+
+  # Learning rate (scaled for larger batch)
+  learning_rate: 3.0e-4
+  weight_decay: 1.0e-5
+
+  # Progressive curriculum learning
+  curriculum:
+    stage1_epochs: 20   # Easy cases (large, solid nodules)
+    stage2_epochs: 15   # Medium cases
+    stage3_epochs: 25   # All cases (including hard)
+
+  # Optimization
+  optimizer: "AdamW"
+  scheduler: "CosineAnnealingWarmRestarts"
+  scheduler_T0: 10
+  scheduler_Tmult: 2
+
+  use_amp: true          # Mixed precision training
+  gradient_clip: 1.0
+  gradient_accumulation_steps: 1
+
+  # Multi-GPU settings
+  use_data_parallel: true
+  device_ids: [0, 1]
+
+  # Loss function weights
+  loss_weights:
+    bce: 0.4
+    focal: 0.4
+    uncertainty: 0.2
+  focal_gamma: 2.0
+  focal_alpha: 0.75
+  label_smoothing: 0.1
+
+  # Early stopping
+  early_stopping_patience: 10
+
+# Data Configuration
+data:
+  data_dir: "data"
+  preprocessed_dir: "preprocessed_data"
+
+  # DataLoader settings (optimized for multi-core)
+  num_workers: 8
+  pin_memory: true
+  prefetch_factor: 4
+  persistent_workers: true
+
+  # Data balancing
+  positive_negative_ratio: 7
+
+  # Augmentation
+  augmentation:
+    enabled: true
+    rotation: true
+    flip: true
+    noise: true
+    noise_std: 0.05
+    intensity_shift: 0.1
+
+  # Train/Val/Test split (subset-based)
+  train_subsets: [0, 1, 2]
+  val_subsets: [3]
+  test_subsets: [4]
+
+# Logging Configuration
+logging:
+  use_wandb: false
+  wandb_project: "lung-cancer-dca-net"
+  wandb_entity: "your_username"
+
+  use_tensorboard: true
+  log_interval: 10     # Log every 10 batches
+  save_interval: 5     # Save checkpoint every 5 epochs
+
+  checkpoint_dir: "results/checkpoints"
+  log_dir: "logs"
+
+# Paths
+paths:
+  data_root: "data"
+  output_root: "results"
+  model_save_dir: "results/checkpoints"
+  log_dir: "logs"
+  figures_dir: "results/figures"
