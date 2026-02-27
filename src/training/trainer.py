@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DCA-Net Trainer with curriculum learning, AMP, DataParallel, and early stopping.
+DCA-Net Trainer with AMP, DataParallel, and early stopping on AUC-ROC.
 """
 
 import torch
@@ -10,7 +10,9 @@ from torch.amp import GradScaler, autocast
 from pathlib import Path
 import time
 import logging
+import numpy as np
 from tqdm import tqdm
+from sklearn.metrics import roc_auc_score, average_precision_score, precision_recall_fscore_support, confusion_matrix
 
 from src.training.losses import DCANetLoss
 
@@ -19,13 +21,12 @@ class Trainer:
     """Training loop for DCA-Net.
     
     Features:
-      - Mixed precision (AMP)
+      - Mixed precision (AMP) for training only
       - DataParallel (multi-GPU)
       - Gradient clipping
       - CosineAnnealingWarmRestarts scheduler
       - Checkpoint save/load
-      - Early stopping
-      - Curriculum learning (3 stages)
+      - Early stopping on AUC-ROC
     """
 
     def __init__(self, model, config, train_loader, val_loader, logger=None):
@@ -75,13 +76,14 @@ class Trainer:
             self.optimizer, T_0=T0, T_mult=Tmult
         )
 
-        # Mixed precision
+        # Mixed precision — ONLY used during training, NOT validation
         self.use_amp = self.train_cfg.get('use_amp', True) and torch.cuda.is_available()
         self.scaler = GradScaler('cuda', enabled=self.use_amp)
         self.grad_clip = self.train_cfg.get('gradient_clip', 1.0)
 
-        # Early stopping
-        self.patience = self.train_cfg.get('early_stopping_patience', 10)
+        # Early stopping — based on AUC-ROC (higher = better)
+        self.patience = self.train_cfg.get('early_stopping_patience', 15)
+        self.best_val_auc = 0.0
         self.best_val_loss = float('inf')
         self.epochs_no_improve = 0
 
@@ -123,6 +125,10 @@ class Trainer:
                 logits = self.model(nodule, context)
                 loss, loss_dict = self.criterion(logits, labels)
 
+            if torch.isnan(loss):
+                self.logger.warning(f"NaN loss at train batch {batch_idx}, skipping")
+                continue
+
             self.scaler.scale(loss).backward()
 
             if self.grad_clip > 0:
@@ -156,10 +162,71 @@ class Trainer:
         avg_loss = total_loss / max(num_batches, 1)
         return avg_loss
 
+    def _compute_metrics(self, all_preds, all_labels):
+        """Compute metrics for imbalanced binary classification."""
+        preds_arr = np.array(all_preds)
+        labels_arr = np.array(all_labels)
+        pred_binary = (preds_arr > 0.5).astype(int)
+
+        metrics = {}
+
+        # AUC-ROC
+        try:
+            if len(np.unique(labels_arr)) > 1:
+                metrics['auc_roc'] = roc_auc_score(labels_arr, preds_arr)
+            else:
+                metrics['auc_roc'] = 0.0
+        except Exception:
+            metrics['auc_roc'] = 0.0
+
+        # Average Precision (PR-AUC)
+        try:
+            if len(np.unique(labels_arr)) > 1:
+                metrics['avg_precision'] = average_precision_score(labels_arr, preds_arr)
+            else:
+                metrics['avg_precision'] = 0.0
+        except Exception:
+            metrics['avg_precision'] = 0.0
+
+        # Precision, Recall, F1
+        precision, recall, f1, _ = precision_recall_fscore_support(
+            labels_arr, pred_binary, average='binary', zero_division=0
+        )
+        metrics['precision'] = precision
+        metrics['recall'] = recall
+        metrics['f1'] = f1
+
+        # Confusion matrix
+        try:
+            tn, fp, fn, tp = confusion_matrix(labels_arr, pred_binary, labels=[0, 1]).ravel()
+            metrics['sensitivity'] = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+            metrics['specificity'] = tn / (tn + fp) if (tn + fp) > 0 else 0.0
+            metrics['accuracy'] = (tp + tn) / (tp + tn + fp + fn)
+            metrics['tp'] = int(tp)
+            metrics['fp'] = int(fp)
+            metrics['tn'] = int(tn)
+            metrics['fn'] = int(fn)
+        except Exception:
+            metrics['sensitivity'] = 0.0
+            metrics['specificity'] = 0.0
+            metrics['accuracy'] = (pred_binary == labels_arr).mean()
+
+        return metrics
+
     @torch.no_grad()
     def validate(self, epoch):
-        """Run validation."""
-        self.model.eval()
+        """Run validation on single GPU to avoid DataParallel eval-mode errors.
+        
+        DataParallel + MultiheadAttention in eval mode causes CUDA misaligned
+        address errors. Solution: unwrap to model.module for validation.
+        """
+        # Unwrap DataParallel for validation (avoids CUDA misaligned address)
+        if isinstance(self.model, nn.DataParallel):
+            val_model = self.model.module
+        else:
+            val_model = self.model
+        
+        val_model.eval()
         total_loss = 0.0
         num_batches = 0
         all_preds = []
@@ -170,36 +237,50 @@ class Trainer:
             context = context.to(self.device)
             labels = labels.to(self.device)
 
-            with autocast('cuda', enabled=self.use_amp):
-                logits = self.model(nodule, context)
-                loss, _ = self.criterion(logits, labels)
+            logits = val_model(nodule, context)
+            loss, _ = self.criterion(logits, labels)
 
-            total_loss += loss.item()
-            num_batches += 1
+            if not torch.isnan(loss):
+                total_loss += loss.item()
+                num_batches += 1
 
             probs = torch.sigmoid(logits.squeeze(-1))
+            probs = torch.clamp(probs, 1e-7, 1.0 - 1e-7)
             all_preds.extend(probs.cpu().numpy())
             all_labels.extend(labels.cpu().numpy())
 
         avg_loss = total_loss / max(num_batches, 1)
 
-        # Simple accuracy
-        import numpy as np
+        # Compute metrics
+        metrics = self._compute_metrics(all_preds, all_labels)
+
+        # Debug: prediction distribution
         preds_arr = np.array(all_preds)
         labels_arr = np.array(all_labels)
-        acc = ((preds_arr > 0.5) == labels_arr).mean()
+        self.logger.info(
+            f"Epoch {epoch+1} | Val preds: min={preds_arr.min():.4f} "
+            f"max={preds_arr.max():.4f} mean={preds_arr.mean():.4f} | "
+            f"Labels: {int(labels_arr.sum())}/{len(labels_arr)} positive"
+        )
 
         self.logger.info(
-            f"Epoch {epoch+1} | Val Loss: {avg_loss:.4f} | Val Acc: {acc:.4f}"
+            f"Epoch {epoch+1} | Val Loss: {avg_loss:.4f} | "
+            f"AUC: {metrics['auc_roc']:.4f} | "
+            f"Sens: {metrics['sensitivity']:.4f} | "
+            f"Spec: {metrics['specificity']:.4f} | "
+            f"F1: {metrics['f1']:.4f} | "
+            f"Acc: {metrics['accuracy']:.4f}"
         )
 
         if self.writer:
             self.writer.add_scalar('val/loss', avg_loss, epoch)
-            self.writer.add_scalar('val/accuracy', acc, epoch)
+            for k, v in metrics.items():
+                if isinstance(v, (int, float)):
+                    self.writer.add_scalar(f'val/{k}', v, epoch)
 
-        return avg_loss, acc
+        return avg_loss, metrics
 
-    def save_checkpoint(self, epoch, val_loss, is_best=False):
+    def save_checkpoint(self, epoch, val_loss, val_metrics=None, is_best=False):
         """Save model checkpoint."""
         model_state = (self.model.module.state_dict() 
                       if isinstance(self.model, nn.DataParallel) 
@@ -212,6 +293,8 @@ class Trainer:
             'scheduler_state_dict': self.scheduler.state_dict(),
             'scaler_state_dict': self.scaler.state_dict(),
             'val_loss': val_loss,
+            'val_metrics': val_metrics,
+            'best_val_auc': self.best_val_auc,
             'global_step': self.global_step,
             'config': self.config,
         }
@@ -220,13 +303,12 @@ class Trainer:
         path = self.ckpt_dir / 'last.pth'
         torch.save(checkpoint, path)
 
-        # Save best
         if is_best:
             best_path = self.ckpt_dir / 'best.pth'
             torch.save(checkpoint, best_path)
-            self.logger.info(f"New best model saved (val_loss: {val_loss:.4f})")
+            auc_str = f"{val_metrics['auc_roc']:.4f}" if val_metrics else "N/A"
+            self.logger.info(f"New best model saved (AUC: {auc_str}, val_loss: {val_loss:.4f})")
 
-        # Save periodic
         if (epoch + 1) % self.save_interval == 0:
             periodic_path = self.ckpt_dir / f'epoch_{epoch+1}.pth'
             torch.save(checkpoint, periodic_path)
@@ -246,25 +328,23 @@ class Trainer:
         self.start_epoch = ckpt['epoch'] + 1
         self.global_step = ckpt['global_step']
         self.best_val_loss = ckpt.get('val_loss', float('inf'))
+        self.best_val_auc = ckpt.get('best_val_auc', 0.0)
         
         self.logger.info(
-            f"Resumed from epoch {self.start_epoch} (val_loss: {self.best_val_loss:.4f})"
+            f"Resumed from epoch {self.start_epoch} "
+            f"(val_loss: {self.best_val_loss:.4f}, best_auc: {self.best_val_auc:.4f})"
         )
 
     def train(self, num_epochs=None, dry_run=False):
-        """Full training loop.
-        
-        Args:
-            num_epochs: Override number of epochs
-            dry_run: If True, run 2 batches per epoch for 1 epoch then exit
-        """
+        """Full training loop."""
         if num_epochs is None:
             num_epochs = self.train_cfg.get('num_epochs', 60)
 
         self.logger.info(f"\n{'='*60}")
         self.logger.info(f"Starting training: {num_epochs} epochs")
         self.logger.info(f"Device: {self.device}")
-        self.logger.info(f"AMP: {self.use_amp}")
+        self.logger.info(f"AMP (training only): {self.use_amp}")
+        self.logger.info(f"Early stopping: patience={self.patience}, metric=AUC-ROC")
         self.logger.info(f"{'='*60}\n")
 
         if dry_run:
@@ -275,7 +355,6 @@ class Trainer:
             start = time.time()
 
             if dry_run:
-                # Override train_loader to only yield 2 batches
                 self.model.train()
                 batch_count = 0
                 for nodule, context, labels in self.train_loader:
@@ -298,39 +377,44 @@ class Trainer:
                     if batch_count >= 2:
                         break
 
-                self.logger.info("\n✅ Dry run complete! Model can train successfully.")
+                self.logger.info("\nDry run complete! Model can train successfully.")
                 return
 
             # Normal training
             train_loss = self.train_epoch(epoch)
-            val_loss, val_acc = self.validate(epoch)
+            val_loss, val_metrics = self.validate(epoch)
             elapsed = time.time() - start
+
+            val_auc = val_metrics.get('auc_roc', 0.0)
 
             self.logger.info(
                 f"Epoch {epoch+1}/{self.start_epoch + num_epochs} | "
                 f"Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | "
-                f"Val Acc: {val_acc:.4f} | Time: {elapsed:.1f}s"
+                f"Val AUC: {val_auc:.4f} | Time: {elapsed:.1f}s"
             )
 
-            # Checkpoint
-            is_best = val_loss < self.best_val_loss
+            # Early stopping on AUC-ROC
+            is_best = val_auc > self.best_val_auc
             if is_best:
+                self.best_val_auc = val_auc
                 self.best_val_loss = val_loss
                 self.epochs_no_improve = 0
             else:
                 self.epochs_no_improve += 1
 
-            self.save_checkpoint(epoch, val_loss, is_best=is_best)
+            self.save_checkpoint(epoch, val_loss, val_metrics=val_metrics, is_best=is_best)
 
-            # Early stopping
             if self.epochs_no_improve >= self.patience:
                 self.logger.info(
                     f"\nEarly stopping at epoch {epoch+1} "
-                    f"(no improvement for {self.patience} epochs)"
+                    f"(no AUC improvement for {self.patience} epochs)"
                 )
                 break
 
         if self.writer:
             self.writer.close()
         
-        self.logger.info(f"\nTraining complete! Best val loss: {self.best_val_loss:.4f}")
+        self.logger.info(
+            f"\nTraining complete! Best AUC: {self.best_val_auc:.4f} | "
+            f"Best val loss: {self.best_val_loss:.4f}"
+        )

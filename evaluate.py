@@ -159,25 +159,40 @@ def main():
         training_log=training_log,
     )
 
+    # ── GradCAM Explainability ──
+    logger.info("\n7. Generating GradCAM visualizations...")
+    try:
+        from src.explainability.gradcam import generate_gradcam_report
+        gradcam_dir = os.path.join(args.output, 'figures', 'gradcam')
+        gradcam_paths = generate_gradcam_report(
+            model, test_loader, device, gradcam_dir,
+            num_samples=10, stream='nodule_stream'
+        )
+        logger.info(f"   Generated {len(gradcam_paths)} GradCAM visualizations")
+    except Exception as e:
+        logger.warning(f"   GradCAM generation failed: {e}")
+        logger.warning("   Continuing without GradCAM (non-critical)")
+
     logger.info("\n" + "=" * 60)
     logger.info("EVALUATION COMPLETE")
     logger.info("=" * 60)
     logger.info(f"\nOutput directory: {args.output}/")
     logger.info("Files generated:")
-    logger.info("  📊 evaluation_results.json  — all metrics")
-    logger.info("  📄 evaluation_report.txt    — readable report")
-    logger.info("  💾 predictions.npz          — raw predictions")
-    logger.info("  📈 figures/                 — all plots")
+    logger.info("  evaluation_results.json  — all metrics")
+    logger.info("  evaluation_report.txt    — readable report")
+    logger.info("  predictions.npz          — raw predictions")
+    logger.info("  figures/                 — all plots")
+    logger.info("  figures/gradcam/         — GradCAM heatmaps")
 
     # Print summary of key metrics
-    logger.info(f"\n🎯 KEY METRICS:")
+    logger.info(f"\nKEY METRICS:")
     logger.info(f"   AUC-ROC:     {metrics['auc_roc']:.4f}")
     logger.info(f"   Sensitivity: {metrics['sensitivity']:.4f}")
     logger.info(f"   Specificity: {metrics['specificity']:.4f}")
     logger.info(f"   F1-Score:    {metrics['f1_score']:.4f}")
 
     # Trained model output explanation
-    logger.info(f"\n📦 TRAINED MODEL OUTPUT:")
+    logger.info(f"\nTRAINED MODEL OUTPUT:")
     if ckpt_path:
         logger.info(f"   Checkpoint: {ckpt_path}")
     logger.info(f"   Format: .pth (PyTorch state dict)")

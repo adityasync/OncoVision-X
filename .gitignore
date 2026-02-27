@@ -45,7 +45,7 @@ venv.bak/
 
 # Data and Artifacts
 data/
-results/
+# results/
 logs/
 *.csv
 *.npy

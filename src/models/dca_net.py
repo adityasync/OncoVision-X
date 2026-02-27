@@ -160,41 +160,45 @@ class ContextStream(nn.Module):
 
     def __init__(self, feature_dim=256):
         super().__init__()
+        # Scale internal channels based on output dim
+        c1, c2, c3 = 64, 128, 256
+        if feature_dim > 256:
+            c1, c2, c3 = 64, 128, 512
 
         self.block1 = nn.Sequential(
-            nn.Conv3d(1, 64, kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm3d(64),
+            nn.Conv3d(1, c1, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm3d(c1),
             nn.ReLU(inplace=True),
         )  # 48→24
 
         self.block2 = nn.Sequential(
-            nn.Conv3d(64, 128, kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm3d(128),
+            nn.Conv3d(c1, c2, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm3d(c2),
             nn.ReLU(inplace=True),
         )  # 24→12
 
         self.block3 = nn.Sequential(
-            nn.Conv3d(128, 256, kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm3d(256),
+            nn.Conv3d(c2, c3, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm3d(c3),
             nn.ReLU(inplace=True),
         )  # 12→6
 
-        self.spatial_attn = SpatialAttention3D(256)
-        self.gap = nn.AdaptiveAvgPool3d(1)  # → (B, 256, 1, 1, 1)
-        self.fc = nn.Linear(256, feature_dim)
+        self.spatial_attn = SpatialAttention3D(c3)
+        self.gap = nn.AdaptiveAvgPool3d(1)  # → (B, c3, 1, 1, 1)
+        self.fc = nn.Linear(c3, feature_dim)
 
     def forward(self, x):
         """
         Args:
             x: (B, 1, 48, 48, 48)
         Returns:
-            features: (B, 256)
+            features: (B, feature_dim)
         """
         x = self.block1(x)
         x = self.block2(x)
         x = self.block3(x)
         x = self.spatial_attn(x)
-        x = self.gap(x).flatten(1)  # (B, 256)
+        x = self.gap(x).flatten(1)  # (B, c3)
         x = self.fc(x)
         return x
 

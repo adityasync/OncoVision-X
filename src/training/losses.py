@@ -32,6 +32,8 @@ class FocalLoss(nn.Module):
         """
         bce = F.binary_cross_entropy_with_logits(logits.squeeze(-1), targets, reduction='none')
         probs = torch.sigmoid(logits.squeeze(-1))
+        # Clamp probs to prevent numerical issues
+        probs = torch.clamp(probs, 1e-7, 1.0 - 1e-7)
         p_t = probs * targets + (1 - probs) * (1 - targets)
         alpha_t = self.alpha * targets + (1 - self.alpha) * (1 - targets)
         focal_weight = alpha_t * (1 - p_t) ** self.gamma
@@ -56,6 +58,8 @@ class UncertaintyLoss(nn.Module):
             targets: (B,) binary labels
         """
         probs = torch.sigmoid(logits.squeeze(-1))
+        # Clamp probs
+        probs = torch.clamp(probs, 1e-7, 1.0 - 1e-7)
         
         # Confidence: how far from 0.5 (max uncertainty)
         confidence = (probs - 0.5).abs() * 2  # [0, 1]
@@ -122,6 +126,10 @@ class DCANetLoss(nn.Module):
         total = (self.bce_weight * bce +
                  self.focal_weight * focal +
                  self.uncertainty_weight * uncertainty)
+
+        # NaN safety: if total is NaN, fall back to BCE only
+        if torch.isnan(total):
+            total = bce
 
         loss_dict = {
             'total': total.item(),
