@@ -28,6 +28,61 @@ from src.data.dataset import LunaDataset, create_data_loaders
 from src.training.trainer import Trainer
 
 
+# ─────────────────────────────────────────────────────────────
+# Display
+# ─────────────────────────────────────────────────────────────
+RED = "\033[91m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+BLUE = "\033[94m"
+CYAN = "\033[96m"
+BOLD = "\033[1m"
+DIM = "\033[2m"
+RESET = "\033[0m"
+
+
+def banner():
+    print(f"""
+{BOLD}{CYAN}╔════════════════════════════════════════════════════════════════════╗
+║                                                                    ║
+║    ██████╗ ███╗   ██╗ ██████╗ ██████╗                              ║
+║   ██╔═══██╗████╗  ██║██╔════╝██╔═══██╗                             ║
+║   ██║   ██║██╔██╗ ██║██║     ██║   ██║                             ║
+║   ██║   ██║██║╚██╗██║██║     ██║   ██║                             ║
+║   ╚██████╔╝██║ ╚████║╚██████╗╚██████╔╝                             ║
+║    ╚═════╝ ╚═╝  ╚═══╝ ╚═════╝ ╚═════╝                              ║
+║   ██╗   ██╗██╗███████╗██╗ ██████╗ ███╗   ██╗    ██╗  ██╗           ║
+║   ██║   ██║██║██╔════╝██║██╔═══██╗████╗  ██║    ╚██╗██╔╝           ║
+║   ██║   ██║██║███████╗██║██║   ██║██╔██╗ ██║     ╚███╔╝            ║
+║   ╚██╗ ██╔╝██║╚════██║██║██║   ██║██║╚██╗██║     ██╔██╗            ║
+║    ╚████╔╝ ██║███████║██║╚██████╔╝██║ ╚████║    ██╔╝ ██╗           ║
+║     ╚═══╝  ╚═╝╚══════╝╚═╝ ╚═════╝ ╚═╝  ╚═══╝    ╚═╝  ╚═╝           ║
+║                                                                    ║
+║   Dual-Context Attention Network                                   ║
+║   AI-Powered Lung Cancer Detection — 5-Fold Cross-Validation       ║
+║                                                                    ║
+╚════════════════════════════════════════════════════════════════════╝{RESET}
+""")
+
+
+def section(title):
+    print(f"\n{BOLD}{BLUE}{'─' * 60}")
+    print(f"  {title}")
+    print(f"{'─' * 60}{RESET}")
+
+
+def info(label, value):
+    print(f"  {DIM}{label}:{RESET} {value}")
+
+
+def success(msg):
+    print(f"  {GREEN}✓ {msg}{RESET}")
+
+
+def warn(msg):
+    print(f"  {YELLOW}! {msg}{RESET}")
+
+
 def setup_logging(fold_id):
     """Setup logging for a specific fold."""
     log_dir = Path('logs')
@@ -251,27 +306,22 @@ def main():
     num_folds = min(args.folds, 5)
     all_metrics = {}
     
-    print("\n" + "=" * 60)
-    print("  OncoVision-X — 5-Fold Cross-Validation")
-    print("=" * 60)
-    print(f"  Folds: {num_folds}")
-    print(f"  Config: {args.config}")
-    print(f"  Backbone: {config['model'].get('backbone', 'efficientnet_b3')}")
-    print(f"  Batch size: {config['training'].get('batch_size', 64)}")
-    print(f"  Epochs per fold: {config['training'].get('num_epochs', 150)}")
+    banner()
+    section("CROSS-VALIDATION SETUP")
+    info("Folds", str(num_folds))
+    info("Config", args.config)
+    info("Backbone", config['model'].get('backbone', 'efficientnet_b3'))
+    info("Batch size", str(config['training'].get('batch_size', 64)))
+    info("Epochs per fold", str(config['training'].get('num_epochs', 150)))
     
     if torch.cuda.is_available():
         for i in range(torch.cuda.device_count()):
             name = torch.cuda.get_device_name(i)
-            mem = torch.cuda.get_device_properties(i).total_mem / 1024**3
-            print(f"  GPU {i}: {name} ({mem:.1f} GB)")
-    
-    print("=" * 60 + "\n")
+            mem = torch.cuda.get_device_properties(i).total_memory / 1024**3
+            info(f"GPU {i}", f"{name} ({mem:.1f} GB)")
     
     for fold_id in range(args.resume, num_folds):
-        print(f"\n{'='*60}")
-        print(f"  FOLD {fold_id + 1}/{num_folds}")
-        print(f"{'='*60}\n")
+        section(f"FOLD {fold_id + 1}/{num_folds}")
         
         logger = setup_logging(fold_id)
         
@@ -318,9 +368,7 @@ def main():
         torch.cuda.empty_cache()
     
     # Aggregate results
-    print("\n" + "=" * 60)
-    print("  CROSS-VALIDATION RESULTS")
-    print("=" * 60)
+    section("CROSS-VALIDATION RESULTS")
     
     metric_names = ['auc_roc', 'auc_pr', 'sensitivity', 'specificity', 'f1', 'accuracy']
     summary = {}
@@ -332,9 +380,7 @@ def main():
             mean = np.mean(values)
             std = np.std(values)
             summary[metric] = {'mean': mean, 'std': std, 'values': values}
-            print(f"  {metric:>15}: {mean:.4f} ± {std:.4f}  {values}")
-    
-    print("=" * 60)
+            print(f"  {DIM}{metric:>15}:{RESET} {BOLD}{GREEN}{mean:.4f}{RESET} ± {std:.4f}  {values}")
     
     # Save results
     results_dir = Path('results/kfold')

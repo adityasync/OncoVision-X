@@ -44,7 +44,7 @@ venv.bak/
 .idea/
 
 # Data and Artifacts
-data/
+/data/
 # results/
 logs/
 *.csv

@@ -25,6 +25,61 @@ HARD_NEG_RATIO = 10   # Hard negatives per positive (increased from 5)
 RANDOM_NEG_RATIO = 5  # Random negatives per positive (increased from 2)
 
 
+# ─────────────────────────────────────────────────────────────
+# Display
+# ─────────────────────────────────────────────────────────────
+RED = "\033[91m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+BLUE = "\033[94m"
+CYAN = "\033[96m"
+BOLD = "\033[1m"
+DIM = "\033[2m"
+RESET = "\033[0m"
+
+
+def banner():
+    print(f"""
+{BOLD}{CYAN}╔════════════════════════════════════════════════════════════════════╗
+║                                                                    ║
+║    ██████╗ ███╗   ██╗ ██████╗ ██████╗                              ║
+║   ██╔═══██╗████╗  ██║██╔════╝██╔═══██╗                             ║
+║   ██║   ██║██╔██╗ ██║██║     ██║   ██║                             ║
+║   ██║   ██║██║╚██╗██║██║     ██║   ██║                             ║
+║   ╚██████╔╝██║ ╚████║╚██████╗╚██████╔╝                             ║
+║    ╚═════╝ ╚═╝  ╚═══╝ ╚═════╝ ╚═════╝                              ║
+║   ██╗   ██╗██╗███████╗██╗ ██████╗ ███╗   ██╗    ██╗  ██╗           ║
+║   ██║   ██║██║██╔════╝██║██╔═══██╗████╗  ██║    ╚██╗██╔╝           ║
+║   ██║   ██║██║███████╗██║██║   ██║██╔██╗ ██║     ╚███╔╝            ║
+║   ╚██╗ ██╔╝██║╚════██║██║██║   ██║██║╚██╗██║     ██╔██╗            ║
+║    ╚████╔╝ ██║███████║██║╚██████╔╝██║ ╚████║    ██╔╝ ██╗           ║
+║     ╚═══╝  ╚═╝╚══════╝╚═╝ ╚═════╝ ╚═╝  ╚═══╝    ╚═╝  ╚═╝           ║
+║                                                                    ║
+║   Dual-Context Attention Network                                   ║
+║   AI-Powered Lung Cancer Detection — Metadata Generation           ║
+║                                                                    ║
+╚════════════════════════════════════════════════════════════════════╝{RESET}
+""")
+
+
+def section(title):
+    print(f"\n{BOLD}{BLUE}{'─' * 60}")
+    print(f"  {title}")
+    print(f"{'─' * 60}{RESET}")
+
+
+def info(label, value):
+    print(f"  {DIM}{label}:{RESET} {value}")
+
+
+def success(msg):
+    print(f"  {GREEN}✓ {msg}{RESET}")
+
+
+def warn(msg):
+    print(f"  {YELLOW}! {msg}{RESET}")
+
+
 def get_scan_paths():
     """Get all .mhd scan file paths organized by subset."""
     scan_paths = {}
@@ -38,7 +93,7 @@ def get_scan_paths():
 
 def rebuild_metadata_from_patches():
     """Reconstruct metadata by scanning patch files + candidates.csv."""
-    print("  Rebuilding metadata from patch files on disk...")
+    info("Status", "Rebuilding metadata from patch files on disk...")
 
     nodule_dir = OUTPUT_DIR / "nodule_patches"
     context_dir = OUTPUT_DIR / "context_patches"
@@ -56,7 +111,7 @@ def rebuild_metadata_from_patches():
 
     # Scan patch files
     patch_files = sorted(nodule_dir.glob("*.npz"))
-    print(f"  Found {len(patch_files)} patch files")
+    info("Found", f"{len(patch_files)} patch files")
 
     results = []
     for pf in patch_files:
@@ -123,9 +178,9 @@ def create_splits(metadata_df, scan_paths):
         train_df = metadata_df[metadata_df['series_uid'].isin(train_series)]
         val_df = metadata_df[metadata_df['series_uid'].isin(val_series)]
         test_df = metadata_df[metadata_df['series_uid'].isin(test_series)]
-        print("  Using subset-based splitting")
+        success("Using subset-based splitting")
     else:
-        print("  Falling back to random patient-level split (60/20/20)...")
+        warn("Falling back to random patient-level split (60/20/20)...")
         unique_series = metadata_df['series_uid'].unique()
         np.random.shuffle(unique_series)
 
@@ -186,6 +241,9 @@ def balance_samples(metadata_df):
 
 
 def main():
+    banner()
+    section("METADATA GENERATION")
+    
     checkpoint_path = OUTPUT_DIR / "checkpoint.json"
     all_samples_path = OUTPUT_DIR / "metadata" / "all_samples.csv"
     metadata_dir = OUTPUT_DIR / "metadata"
@@ -193,52 +251,54 @@ def main():
 
     # Try sources in order: checkpoint > all_samples.csv > rebuild from patches
     if checkpoint_path.exists():
-        print("Loading from checkpoint.json...")
+        info("Source", "Loading from checkpoint.json...")
         with open(checkpoint_path, 'r') as f:
             checkpoint = json.load(f)
         metadata_df = pd.DataFrame(checkpoint['all_results'])
     elif all_samples_path.exists():
-        print("Loading from existing all_samples.csv...")
+        info("Source", "Loading from existing all_samples.csv...")
         metadata_df = pd.read_csv(all_samples_path)
     else:
-        print("No checkpoint or all_samples.csv found.")
+        info("Source", "No checkpoint or all_samples.csv found.")
         metadata_df = rebuild_metadata_from_patches()
 
-    print(f"  Total patches: {len(metadata_df)}")
-    print(f"  Unique scans: {metadata_df['series_uid'].nunique()}")
-    print(f"  Positives: {(metadata_df['label'] == 1).sum()}")
-    print(f"  Negatives: {(metadata_df['label'] == 0).sum()}")
-    print(f"  Hard negatives: {metadata_df['is_hard_negative'].sum()}")
+    info("Total patches", str(len(metadata_df)))
+    info("Unique scans", str(metadata_df['series_uid'].nunique()))
+    info("Positives", str((metadata_df['label'] == 1).sum()))
+    info("Negatives", str((metadata_df['label'] == 0).sum()))
+    info("Hard negatives", str(metadata_df['is_hard_negative'].sum()))
 
     scan_paths = get_scan_paths()
 
-    print("\nCreating train/val/test splits...")
+    section("DATA SPLITS")
+    info("Status", "Creating train/val/test splits...")
     train_df, val_df, test_df = create_splits(metadata_df, scan_paths)
 
     # Balance ALL splits
-    print("Balancing training set...")
+    info("Status", "Balancing training set...")
     train_balanced = balance_samples(train_df)
-    print("Balancing validation set...")
+    info("Status", "Balancing validation set...")
     val_balanced = balance_samples(val_df)
-    print("Balancing test set...")
+    info("Status", "Balancing test set...")
     test_balanced = balance_samples(test_df)
 
     def _print_split(name, df):
         n_pos = (df['label'] == 1).sum()
         n_neg = (df['label'] == 0).sum()
         ratio = n_neg / max(n_pos, 1)
-        print(f"  {name}: {len(df)} samples")
-        print(f"    Positives: {n_pos}")
-        print(f"    Negatives: {n_neg}")
+        print(f"\n  {BOLD}{name}:{RESET} {len(df)} samples")
+        print(f"    {GREEN}Positives:{RESET} {n_pos}")
+        print(f"    {RED}Negatives:{RESET} {n_neg}")
         print(f"    Ratio: 1:{ratio:.1f}")
 
-    print(f"\nSplit statistics:")
+    print(f"\n  {BOLD}{BLUE}SPLIT STATISTICS{RESET}")
     _print_split("Train (balanced)", train_balanced)
     _print_split("Validation (balanced)", val_balanced)
     _print_split("Test (balanced)", test_balanced)
 
     # Save
-    print("\nSaving metadata CSVs...")
+    section("SAVING")
+    info("Status", "Saving metadata CSVs...")
     train_balanced.to_csv(metadata_dir / "train_samples.csv", index=False)
     val_balanced.to_csv(metadata_dir / "val_samples.csv", index=False)
     test_balanced.to_csv(metadata_dir / "test_samples.csv", index=False)
@@ -255,7 +315,7 @@ def main():
     with open(OUTPUT_DIR / "statistics.json", 'w') as f:
         json.dump(stats, f, indent=2)
 
-    print("\nMetadata generation complete!")
+    success("Metadata generation complete!")
 
 
 if __name__ == "__main__":

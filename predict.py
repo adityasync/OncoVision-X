@@ -242,35 +242,77 @@ def mc_dropout_predict(model, nodule_patch, context_patch, device, num_passes=10
 
 
 # ─────────────────────────────────────────────────────────────
-# Display functions
+# Display
 # ─────────────────────────────────────────────────────────────
-def print_header():
-    print("\n" + "=" * 60)
-    print("  DCA-NET — Lung Nodule Classification")
-    print("  Dual-Context Attention Network")
-    print("=" * 60)
+RED = "\033[91m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+BLUE = "\033[94m"
+CYAN = "\033[96m"
+BOLD = "\033[1m"
+DIM = "\033[2m"
+RESET = "\033[0m"
+
+
+def banner():
+    print(f"""
+{BOLD}{CYAN}╔════════════════════════════════════════════════════════════════════╗
+║                                                                    ║
+║    ██████╗ ███╗   ██╗ ██████╗ ██████╗                              ║
+║   ██╔═══██╗████╗  ██║██╔════╝██╔═══██╗                             ║
+║   ██║   ██║██╔██╗ ██║██║     ██║   ██║                             ║
+║   ██║   ██║██║╚██╗██║██║     ██║   ██║                             ║
+║   ╚██████╔╝██║ ╚████║╚██████╗╚██████╔╝                             ║
+║    ╚═════╝ ╚═╝  ╚═══╝ ╚═════╝ ╚═════╝                              ║
+║   ██╗   ██╗██╗███████╗██╗ ██████╗ ███╗   ██╗    ██╗  ██╗           ║
+║   ██║   ██║██║██╔════╝██║██╔═══██╗████╗  ██║    ╚██╗██╔╝           ║
+║   ██║   ██║██║███████╗██║██║   ██║██╔██╗ ██║     ╚███╔╝            ║
+║   ╚██╗ ██╔╝██║╚════██║██║██║   ██║██║╚██╗██║     ██╔██╗            ║
+║    ╚████╔╝ ██║███████║██║╚██████╔╝██║ ╚████║    ██╔╝ ██╗           ║
+║     ╚═══╝  ╚═╝╚══════╝╚═╝ ╚═════╝ ╚═╝  ╚═══╝    ╚═╝  ╚═╝           ║
+║                                                                    ║
+║   Dual-Context Attention Network                                   ║
+║   AI-Powered Lung Cancer Detection — Prediction Pipeline           ║
+║                                                                    ║
+╚════════════════════════════════════════════════════════════════════╝{RESET}
+""")
+
+
+def section(title):
+    print(f"\n{BOLD}{BLUE}{'─' * 60}")
+    print(f"  {title}")
+    print(f"{'─' * 60}{RESET}")
+
+
+def info(label, value):
+    print(f"  {DIM}{label}:{RESET} {value}")
+
+
+def success(msg):
+    print(f"  {GREEN}✓ {msg}{RESET}")
+
+
+def warn(msg):
+    print(f"  {YELLOW}! {msg}{RESET}")
 
 
 def print_result(idx, coords, prob, label, confidence, uncertainty=None):
     """Print a single prediction result."""
-    # Color coding
     if label == "MALIGNANT":
-        color = "\033[91m"  # Red
-        icon = "!!!"
+        color = RED
+        icon = "⚠ "
     else:
-        color = "\033[92m"  # Green
-        icon = "OK "
-    reset = "\033[0m"
-    bold = "\033[1m"
+        color = GREEN
+        icon = "✓ "
 
-    print(f"\n  [{icon}] Candidate {idx}")
+    print(f"\n  {BOLD}{color}[{icon}] Candidate {idx}{RESET}")
     if coords is not None:
-        print(f"       Coordinates: ({coords[0]:.1f}, {coords[1]:.1f}, {coords[2]:.1f}) mm")
-    print(f"       Probability: {bold}{color}{prob:.4f}{reset}")
-    print(f"       Classification: {bold}{color}{label}{reset}")
-    print(f"       Confidence: {confidence}")
+        print(f"       {DIM}Coordinates:{RESET} ({coords[0]:.1f}, {coords[1]:.1f}, {coords[2]:.1f}) mm")
+    print(f"       {DIM}Probability:{RESET} {BOLD}{color}{prob:.4f}{RESET}")
+    print(f"       {DIM}Classification:{RESET} {BOLD}{color}{label}{RESET}")
+    print(f"       {DIM}Confidence:{RESET} {confidence}")
     if uncertainty is not None:
-        print(f"       Uncertainty (std): {uncertainty:.4f}")
+        print(f"       {DIM}Uncertainty (std):{RESET} {uncertainty:.4f}")
 
 
 def print_summary(results):
@@ -279,19 +321,17 @@ def print_summary(results):
     malignant = sum(1 for r in results if r['classification'] == 'MALIGNANT')
     benign = total - malignant
 
-    print("\n" + "-" * 60)
-    print(f"  SUMMARY: {total} candidates analyzed")
-    print(f"    Malignant: \033[91m{malignant}\033[0m")
-    print(f"    Benign:    \033[92m{benign}\033[0m")
+    section("SUMMARY")
+    print(f"  {total} candidates analyzed")
+    print(f"    Malignant: {BOLD}{RED}{malignant}{RESET}")
+    print(f"    Benign:    {BOLD}{GREEN}{benign}{RESET}")
 
     if malignant > 0:
-        print(f"\n  \033[1m\033[91mATTENTION: {malignant} suspicious nodule(s) detected.\033[0m")
-        print("  Consult a radiologist for clinical interpretation.")
+        print(f"\n  {BOLD}{RED}ATTENTION: {malignant} suspicious nodule(s) detected.{RESET}")
+        print(f"  {DIM}Consult a radiologist for clinical interpretation.{RESET}\n")
     else:
-        print(f"\n  \033[92mNo suspicious nodules detected.\033[0m")
-        print("  Note: This is an AI screening tool, not a clinical diagnosis.")
-
-    print("-" * 60 + "\n")
+        print(f"\n  {GREEN}No suspicious nodules detected.{RESET}")
+        print(f"  {DIM}Note: This is an AI screening tool, not a clinical diagnosis.{RESET}\n")
 
 
 # ─────────────────────────────────────────────────────────────
@@ -299,11 +339,12 @@ def print_summary(results):
 # ─────────────────────────────────────────────────────────────
 def predict_from_scan(args, model, device):
     """Predict from a CT scan with coordinates."""
-    print(f"\n  Loading CT scan: {args.scan}")
+    section("SCAN ANALYSIS")
+    info("Loading CT scan", args.scan)
     scan_arr, origin, spacing, direction = load_scan(args.scan)
-    print(f"  Scan shape: {scan_arr.shape}")
-    print(f"  Origin: {origin}")
-    print(f"  Spacing: {spacing}")
+    info("Scan shape", str(scan_arr.shape))
+    info("Origin", str(origin))
+    info("Spacing", str(spacing))
 
     # Collect candidates
     candidates = []
@@ -311,7 +352,7 @@ def predict_from_scan(args, model, device):
         # Single coordinate
         coords = [float(x.strip()) for x in args.coords.split(',')]
         if len(coords) != 3:
-            print("ERROR: --coords must be x,y,z (3 values)")
+            print(f"{RED}ERROR: --coords must be x,y,z (3 values){RESET}")
             sys.exit(1)
         candidates.append(np.array(coords))
     elif args.candidates:
@@ -324,11 +365,11 @@ def predict_from_scan(args, model, device):
                     candidates.append(np.array([row[col_set[0]], row[col_set[1]], row[col_set[2]]]))
                 break
         else:
-            print(f"ERROR: CSV must have columns (coordX,coordY,coordZ) or (x,y,z)")
+            print(f"{RED}ERROR: CSV must have columns (coordX,coordY,coordZ) or (x,y,z){RESET}")
             print(f"  Found columns: {list(df.columns)}")
             sys.exit(1)
     else:
-        print("ERROR: Provide --coords or --candidates with --scan")
+        print(f"{RED}ERROR: Provide --coords or --candidates with --scan{RESET}")
         sys.exit(1)
 
     print(f"\n  Processing {len(candidates)} candidate(s)...")
@@ -337,12 +378,12 @@ def predict_from_scan(args, model, device):
     for i, world_coord in enumerate(candidates):
         # Convert world → voxel
         voxel_coord = world_to_voxel(world_coord, origin, spacing)
-        print(f"\n  Candidate {i+1}: world=({world_coord[0]:.1f}, {world_coord[1]:.1f}, {world_coord[2]:.1f}) → voxel=({voxel_coord[0]}, {voxel_coord[1]}, {voxel_coord[2]})")
+        print(f"\n  {DIM}Candidate {i+1}: world=({world_coord[0]:.1f}, {world_coord[1]:.1f}, {world_coord[2]:.1f}) → voxel=({voxel_coord[0]}, {voxel_coord[1]}, {voxel_coord[2]}){RESET}")
 
         # Extract patches
         nodule, context = extract_candidate_patches(scan_arr, voxel_coord)
         if nodule is None:
-            print(f"  WARNING: Could not extract patches for candidate {i+1} (near scan boundary)")
+            warn(f"Could not extract patches for candidate {i+1} (near scan boundary)")
             continue
 
         # Predict
@@ -375,11 +416,13 @@ def predict_from_scan(args, model, device):
 
 def predict_from_patches(args, model, device):
     """Predict from pre-extracted patch files."""
-    print(f"\n  Loading patches...")
+    section("PATCH ANALYSIS")
+    info("Loading nodule patch", args.nodule_patch)
+    info("Loading context patch", args.context_patch)
     nodule = np.load(args.nodule_patch)['patch'].astype(np.float32)
     context = np.load(args.context_patch)['patch'].astype(np.float32)
-    print(f"  Nodule patch shape:  {nodule.shape}")
-    print(f"  Context patch shape: {context.shape}")
+    info("Nodule patch shape", str(nodule.shape))
+    info("Context patch shape", str(context.shape))
 
     prob, label, confidence = predict_single(model, nodule, context, device)
 
@@ -484,20 +527,21 @@ Examples:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     if not args.quiet:
-        print_header()
-        print(f"\n  Device: {device}")
+        banner()
+        section("INITIALIZATION")
+        info("Device", str(device))
         if device.type == 'cuda':
-            print(f"  GPU: {torch.cuda.get_device_name(0)}")
+            info("GPU", torch.cuda.get_device_name(0))
 
     # Check checkpoint exists
     if not Path(args.checkpoint).exists():
-        print(f"\n  ERROR: Checkpoint not found: {args.checkpoint}")
-        print("  Make sure you have the trained model at results/checkpoints/best.pth")
+        print(f"\n  {RED}ERROR: Checkpoint not found: {args.checkpoint}{RESET}")
+        print(f"  {DIM}Make sure you have the trained model at results/checkpoints/best.pth{RESET}")
         sys.exit(1)
 
     # Load model
     if not args.quiet:
-        print(f"\n  Loading model checkpoint: {args.checkpoint}")
+        info("Loading model checkpoint", args.checkpoint)
     config = load_config(args.config)
     model = load_model(args.checkpoint, config, device)
 

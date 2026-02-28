@@ -35,6 +35,22 @@ Extensive component structures and data flow models have been mapped. Proceed to
 * [Data Processing Pipeline](docs/data_pipeline.md) (Patch Extractor logic and intelligent sampling)
 * [Training and Evaluation Specifications](docs/evaluation_and_training.md) (Curriculum learning flows and clinical export optimizations)
 
+## Model Performance
+
+The OncoVision-X model has been extensively evaluated on the LUNA16 dataset using the `evaluate.py` pipeline. The model demonstrates high capability in distinguishing malignant nodules while maintaining rigorous uncertainty bounds.
+
+### Key Metrics
+* **AUC-ROC:** `0.9555`
+* **Specificity:** `0.9783` (97.8% true negative rate)
+* **Sensitivity:** `0.7174`
+* **Accuracy:** `0.9457`
+* **Mean Confidence (Correct Predictions):** `0.9843`
+
+### Complete Performance & Visualizations
+For an in-depth look at all generated metrics, ROC/PR curves, uncertainty distributions, and Grad-CAM++ visualizations, see the dedicated performance documentation:
+
+👉 **[View Full Model Performance & Charts](docs/model_performance.md)**
+
 ## Installation and Requirements
 
 The framework requires PyTorch mapped to Python 3.10 or higher. Install requirements using standard Python environment packaging:
