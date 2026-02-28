@@ -55,12 +55,12 @@ This document provides a comprehensive overview of the OncoVision-X evaluation m
 The model integrates Grad-CAM++ to highlight exactly what physiological characteristics drove its decision.
 
 <p align="center">
-  <img src="../results/evaluation/figures/gradcam_000_neg_pred_benign.png" width="48%" title="Grad-CAM Sample 1">
-  <img src="../results/evaluation/figures/gradcam_001_neg_pred_benign.png" width="48%" title="Grad-CAM Sample 2">
+  <img src="../results/evaluation/figures/gradcam/gradcam_000_neg_pred_benign.png" width="48%" title="Grad-CAM Sample 1">
+  <img src="../results/evaluation/figures/gradcam/gradcam_001_neg_pred_benign.png" width="48%" title="Grad-CAM Sample 2">
 </p>
 <p align="center">
-  <img src="../results/evaluation/figures/gradcam_008_neg_pred_benign.png" width="48%" title="Grad-CAM Sample 3">
-  <img src="../results/evaluation/figures/gradcam_000_neg_pred_malignant.png" width="48%" title="Grad-CAM Sample 4 (False Positive)">
+  <img src="../results/evaluation/figures/gradcam/gradcam_008_neg_pred_benign.png" width="48%" title="Grad-CAM Sample 3">
+  <img src="../results/evaluation/figures/gradcam/gradcam_000_neg_pred_malignant.png" width="48%" title="Grad-CAM Sample 4 (False Positive)">
 </p>
 
 *The heatmaps provide transparent mappings of critical spiculation and boundary structures that influenced the final classification layer.*
