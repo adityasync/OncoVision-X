@@ -69,7 +69,7 @@ RED = "\033[91m"
 GREEN = "\033[92m"
 YELLOW = "\033[93m"
 BLUE = "\033[94m"
-CYAN = "\033[96m"
+GREEN = "\033[96m"
 BOLD = "\033[1m"
 DIM = "\033[2m"
 RESET = "\033[0m"
@@ -77,7 +77,7 @@ RESET = "\033[0m"
 
 def banner():
     print(f"""
-{BOLD}{CYAN}╔════════════════════════════════════════════════════════════════════╗
+{BOLD}{GREEN}╔════════════════════════════════════════════════════════════════════╗
 ║                                                                    ║
 ║    ██████╗ ███╗   ██╗ ██████╗ ██████╗                              ║
 ║   ██╔═══██╗████╗  ██║██╔════╝██╔═══██╗                             ║
@@ -203,6 +203,10 @@ def main():
     # ── Setup logging with full stdout/stderr capture ──
     from src.utils.config import load_config
     from src.utils.logging_utils import setup_logging
+    from src.models.dca_net import DCANet
+    from src.data.dataset import create_data_loaders
+    from src.training.trainer import Trainer
+    from src.evaluation.evaluator import Evaluator
 
     config = load_config(args.config)
 
@@ -281,12 +285,15 @@ def main():
 
     train_loader, val_loader, test_loader = create_data_loaders(config)
 
-    train_pos = sum(1 for _, _, l in train_loader.dataset.metadata.itertuples(index=False) if l == 1) if hasattr(train_loader.dataset, 'metadata') else '?'
     train_total = len(train_loader.dataset)
     val_total = len(val_loader.dataset)
     test_total = len(test_loader.dataset)
 
-    info("Train samples", f"{train_total}")
+    try:
+        train_pos = int(train_loader.dataset.metadata['label'].sum())
+        info("Train samples", f"{train_total} ({train_pos} positive, {train_total - train_pos} negative)")
+    except Exception:
+        info("Train samples", f"{train_total}")
     info("Val samples", f"{val_total}")
     info("Test samples", f"{test_total}")
     info("Train batches", f"{len(train_loader)}")
@@ -371,10 +378,10 @@ def main():
     Training log:     logs/
 
   {DIM}Next steps:{RESET}
-    1. Run evaluation:    {CYAN}python evaluate.py{RESET}
-    2. Run 5-fold CV:     {CYAN}python train_kfold.py{RESET}
-    3. Run demo:          {CYAN}python demo.py{RESET}
-    4. Run prediction:    {CYAN}python predict.py --help{RESET}
+    1. Run evaluation:    {GREEN}python evaluate.py{RESET}
+    2. Run 5-fold CV:     {GREEN}python train_kfold.py{RESET}
+    3. Run demo:          {GREEN}python demo.py{RESET}
+    4. Run prediction:    {GREEN}python predict.py --help{RESET}
 """)
 
     # Cleanup tee

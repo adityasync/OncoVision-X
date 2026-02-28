@@ -6,31 +6,32 @@ model:
   name: "OncoVisionX"
   nodule_patch_size: 64
   context_patch_size: 48
-  backbone: "efficientnet_b3"       # Upgraded from b0 for richer features
+  backbone: "efficientnet_b0"       # B0 — proven stable, AUC 0.9555
   num_classes: 1
-  nodule_feature_dim: 768           # Scaled up from 512
-  context_feature_dim: 512          # Scaled up from 256
-  fusion_dim: 512                   # Scaled up from 256
-  num_attention_heads: 8            # Doubled from 4
+  nodule_feature_dim: 512           # Original proven dims
+  context_feature_dim: 256          # Original proven dims
+  fusion_dim: 256                   # Original proven dims
+  num_attention_heads: 4            # Original proven config
   dropout: 0.5
   prediction_dropout: 0.3
-  mc_dropout_passes: 10             # More passes for better uncertainty
+  mc_dropout_passes: 10
   slice_neighbors: 2               # ±2 slices for cross-slice attention
 
-# Training Configuration (Optimized for 25GB VRAM x2)
+# Training Configuration
 training:
-  batch_size: 64                    # Doubled: 32 per GPU
-  num_epochs: 150                   # Extended from 60
+  batch_size: 48                    # Single GPU, plenty of headroom
+  num_epochs: 150                   # Extended from 60 for more convergence
 
-  # Learning rate (lower for larger model)
-  learning_rate: 1.0e-4
+  # Learning rate
+  learning_rate: 3.0e-4             # Original proven LR
   weight_decay: 1.0e-5
+  warmup_epochs: 3                  # Gentle warmup
 
   # Progressive curriculum learning
   curriculum:
-    stage1_epochs: 40              # Easy cases (large, solid nodules)
-    stage2_epochs: 40              # Medium cases
-    stage3_epochs: 70              # All cases (including hard)
+    stage1_epochs: 40
+    stage2_epochs: 40
+    stage3_epochs: 70
 
   # Optimization
   optimizer: "AdamW"
@@ -38,13 +39,15 @@ training:
   scheduler_T0: 15
   scheduler_Tmult: 2
 
-  use_amp: false                   # Keep disabled: float32 stability
-  gradient_clip: 1.0
+  use_amp: false                   # Disabled — float32 for stability
+  gradient_clip: 1.0               # Proven stable value
   gradient_accumulation_steps: 1
 
   # Multi-GPU settings
-  use_data_parallel: true          # Re-enabled: fixed val unwrapping
-  device_ids: [0, 1]
+  # DataParallel DISABLED: NoduleStream's 3D→2D slice processing
+  # causes cuDNN stream errors with multi-GPU.
+  use_data_parallel: false
+  device_ids: [0]
 
   # Loss function weights
   loss_weights:
@@ -52,25 +55,25 @@ training:
     focal: 0.4
     uncertainty: 0.2
   focal_gamma: 2.0
-  focal_alpha: 0.75
+  focal_alpha: 0.9375              # Adjusted for 1:15 ratio (15/16)
   label_smoothing: 0.1
 
   # Early stopping
-  early_stopping_patience: 25     # More patience for longer training
+  early_stopping_patience: 35
 
 # Data Configuration
 data:
   data_dir: "data"
   preprocessed_dir: "preprocessed_data"
 
-  # DataLoader settings (optimized for multi-core)
+  # DataLoader settings
   num_workers: 8
   pin_memory: true
   prefetch_factor: 4
   persistent_workers: true
 
-  # Data balancing — more negatives for richer training
-  positive_negative_ratio: 15      # Increased from 7
+  # Data balancing — 1:15 ratio for richer training
+  positive_negative_ratio: 15
 
   # Augmentation
   augmentation:
@@ -93,8 +96,8 @@ logging:
   wandb_entity: "your_username"
 
   use_tensorboard: true
-  log_interval: 10                # Log every 10 batches
-  save_interval: 5                # Save checkpoint every 5 epochs
+  log_interval: 10
+  save_interval: 5
 
   checkpoint_dir: "results/checkpoints"
   log_dir: "logs"

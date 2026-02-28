@@ -88,12 +88,13 @@ class DCANetLoss(nn.Module):
     """
 
     def __init__(self, bce_weight=0.4, focal_weight=0.4, uncertainty_weight=0.2,
-                 focal_gamma=2.0, focal_alpha=0.75, label_smoothing=0.1):
+                 focal_gamma=2.0, focal_alpha=0.75, label_smoothing=0.1, pos_weight=1.0):
         super().__init__()
         self.bce_weight = bce_weight
         self.focal_weight = focal_weight
         self.uncertainty_weight = uncertainty_weight
         self.label_smoothing = label_smoothing
+        self.register_buffer('pos_weight', torch.tensor([pos_weight]))
 
         self.focal_loss = FocalLoss(alpha=focal_alpha, gamma=focal_gamma)
         self.uncertainty_loss = UncertaintyLoss()
@@ -111,9 +112,10 @@ class DCANetLoss(nn.Module):
         # Apply label smoothing
         smooth_targets = targets * (1 - self.label_smoothing) + 0.5 * self.label_smoothing
 
-        # BCE loss
+        # BCE loss with pos_weight
         bce = F.binary_cross_entropy_with_logits(
-            logits.squeeze(-1), smooth_targets
+            logits.squeeze(-1), smooth_targets,
+            pos_weight=self.pos_weight.to(targets.device)
         )
 
         # Focal loss (uses original targets for p_t computation)
