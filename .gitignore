@@ -69,13 +69,13 @@ env/
 .env
 
 # Data and Models
-data/
-preprocessed_data/
-demo_patches/
-results/
-experiments/*/checkpoints/
-experiments/*/metrics/*.json
-!experiments/comparison_results/
+/data/
+/preprocessed_data/
+/demo_patches/
+/results/
+/experiments/*/checkpoints/
+/experiments/*/metrics/*.json
+!/experiments/comparison_results/
 
 # Caches
 __pycache__/
