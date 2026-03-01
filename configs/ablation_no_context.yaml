@@ -1,0 +1,21 @@
+experiment_name: "ablation_no_context"
+description: "DCA-Net without 3D context stream"
+
+model:
+  type: "dca_net"
+  ablation: "no_context"
+  nodule_patch_size: 64
+  context_patch_size: 48
+  backbone: "efficientnet_b0"
+
+training:
+  num_epochs: 60
+  batch_size: 32
+  learning_rate: 0.0003
+  weight_decay: 0.00001
+  
+data:
+  train_subsets: [0, 1, 2]
+  val_subsets: [3]
+  test_subsets: [4]
+  num_workers: 16

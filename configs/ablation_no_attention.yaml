@@ -1,0 +1,21 @@
+experiment_name: "ablation_no_attention"
+description: "DCA-Net without cross-slice attention"
+
+model:
+  type: "dca_net"
+  ablation: "no_attention"
+  nodule_patch_size: 64
+  context_patch_size: 48
+  backbone: "efficientnet_b0"
+
+training:
+  num_epochs: 60
+  batch_size: 32
+  learning_rate: 0.0003
+  weight_decay: 0.00001
+  
+data:
+  train_subsets: [0, 1, 2]
+  val_subsets: [3]
+  test_subsets: [4]
+  num_workers: 16

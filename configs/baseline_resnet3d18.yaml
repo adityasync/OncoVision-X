@@ -1,0 +1,19 @@
+experiment_name: "baseline_resnet3d18"
+description: "Standard 3D ResNet-18 baseline"
+
+model:
+  type: "resnet3d18"
+  input_size: 64
+  num_classes: 1
+
+training:
+  num_epochs: 60
+  batch_size: 16  # Smaller due to higher memory usage
+  learning_rate: 0.0001
+  weight_decay: 0.00001
+
+data:
+  train_subsets: [0, 1, 2]
+  val_subsets: [3]
+  test_subsets: [4]
+  num_workers: 16

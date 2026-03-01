@@ -194,9 +194,9 @@ def parse_args():
                         help='Override config epochs')
     parser.add_argument('--lr', type=float, default=None,
                         help='Override config learning rate')
-    parser.add_argument('--ablation', type=str, default=None,
-                        choices=['no_context', 'no_attention', 'no_curriculum', 'no_uncertainty'],
-                        help='Run an ablation study')
+    parser.add_argument('--model', type=str, required=True,
+                        choices=['resnet3d18', 'resnet2d18'],
+                        help='Baseline model to train')
     return parser.parse_args()
 
 
@@ -206,7 +206,7 @@ def main():
     # ── Setup logging with full stdout/stderr capture ──
     from src.utils.config import load_config
     from src.utils.logging_utils import setup_logging
-    from src.models.dca_net import DCANet
+    from src.models.baselines import get_baseline_model
     from src.data.dataset import create_data_loaders
     from src.training.trainer import Trainer
     from src.evaluation.evaluator import Evaluator
@@ -221,24 +221,19 @@ def main():
     if args.lr:
         config['training']['learning_rate'] = args.lr
 
-    if args.ablation:
-        config['ablation'] = args.ablation
-        if args.ablation == 'no_uncertainty':
-            if 'loss_weights' in config.get('training', {}):
-                config['training']['loss_weights']['uncertainty'] = 0.0
-        
-        # Modify checkpoint and log dirs for ablations
-        ablation_suffix = f"_{args.ablation}"
+    if args.model:
+        # Modify checkpoint and log dirs for baselines
+        baseline_suffix = f"_{args.model}"
         if 'logging' in config:
             if 'checkpoint_dir' in config['logging']:
-                config['logging']['checkpoint_dir'] = config['logging']['checkpoint_dir'] + ablation_suffix
+                config['logging']['checkpoint_dir'] = config['logging']['checkpoint_dir'] + baseline_suffix
             if 'log_dir' in config['logging']:
-                config['logging']['log_dir'] = config['logging']['log_dir'] + ablation_suffix
+                config['logging']['log_dir'] = config['logging']['log_dir'] + baseline_suffix
         if 'paths' in config:
             if 'model_save_dir' in config['paths']:
-                config['paths']['model_save_dir'] = config['paths']['model_save_dir'] + ablation_suffix
+                config['paths']['model_save_dir'] = config['paths']['model_save_dir'] + baseline_suffix
             if 'log_dir' in config['paths']:
-                config['paths']['log_dir'] = config['paths']['log_dir'] + ablation_suffix
+                config['paths']['log_dir'] = config['paths']['log_dir'] + baseline_suffix
 
     # Create log file and tee stdout/stderr to it
     log_dir = Path(config.get('paths', {}).get('log_dir', 'logs'))
@@ -289,20 +284,11 @@ def main():
     # ── Model ──
     section("MODEL")
 
-    model = DCANet(config)
+    model = get_baseline_model(args.model)
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-    model_cfg = config.get('model', {})
-    info("Architecture", "OncoVision-X (Dual-Context Attention Network)")
-    info("Backbone", model_cfg.get('backbone', 'efficientnet_b3'))
-    
-    if args.ablation:
-        info("Ablation Mode", f"{RED}{args.ablation.upper()}{RESET}")
-        
-    info("Nodule stream", f"{model_cfg.get('nodule_feature_dim', 768)}D features")
-    info("Context stream", f"{model_cfg.get('context_feature_dim', 512)}D features")
-    info("Fusion", f"{model_cfg.get('fusion_dim', 512)}D, {model_cfg.get('num_attention_heads', 8)} attention heads")
+    info("Architecture", f"Baseline: {args.model}")
     info("Total parameters", f"{total_params:,}")
     info("Trainable", f"{trainable_params:,}")
 

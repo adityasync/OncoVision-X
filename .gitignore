@@ -63,3 +63,30 @@ roadmap*.md
 .Trashes
 ehthumbs.db
 Thumbs.db
+# Environments
+venv/
+env/
+.env
+
+# Data and Models
+data/
+preprocessed_data/
+demo_patches/
+results/
+experiments/*/checkpoints/
+experiments/*/metrics/*.json
+!experiments/comparison_results/
+
+# Caches
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Logs 
+logs/
+logs_no_attention/
+logs_no_context/
+*.log
+
+# Temp
+.cache/

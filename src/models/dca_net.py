@@ -72,8 +72,9 @@ class NoduleStream(nn.Module):
     """
 
     def __init__(self, backbone_name="efficientnet_b0", feature_dim=512,
-                 num_neighbors=2):
+                 num_neighbors=2, ablation=None):
         super().__init__()
+        self.ablation = ablation
         # 2D backbone (pretrained on ImageNet)
         self.backbone = timm.create_model(
             backbone_name, pretrained=False, in_chans=1, num_classes=0
@@ -121,7 +122,11 @@ class NoduleStream(nn.Module):
         slice_feats = slice_feats.view(B, D, -1)
 
         # Cross-slice attention
-        attended, attn_weights = self.cross_attn(slice_feats)  # (B, D, feature_dim)
+        if self.ablation == 'no_attention':
+            attended = slice_feats
+            attn_weights = None
+        else:
+            attended, attn_weights = self.cross_attn(slice_feats)  # (B, D, feature_dim)
 
         # Temporal 1D conv: (B, feature_dim, D)
         temporal = attended.permute(0, 2, 1)
@@ -297,6 +302,7 @@ class DCANet(nn.Module):
         # Parse config or use defaults
         if config is None:
             config = {}
+        self.ablation = config.get('ablation', None)
         model_cfg = config.get('model', {})
 
         backbone = model_cfg.get('backbone', 'efficientnet_b0')
@@ -312,7 +318,7 @@ class DCANet(nn.Module):
         # Streams
         self.nodule_stream = NoduleStream(
             backbone_name=backbone, feature_dim=nodule_dim,
-            num_neighbors=num_neighbors
+            num_neighbors=num_neighbors, ablation=self.ablation
         )
         self.context_stream = ContextStream(feature_dim=context_dim)
 
@@ -339,6 +345,10 @@ class DCANet(nn.Module):
         """
         nodule_feats, attn_weights = self.nodule_stream(nodule_patch)
         context_feats = self.context_stream(context_patch)
+        
+        if self.ablation == 'no_context':
+            context_feats = torch.zeros_like(context_feats)
+            
         fused = self.fusion(nodule_feats, context_feats)
         logits = self.prediction_head(fused)
         return logits
@@ -358,8 +368,9 @@ class DCANet(nn.Module):
             mean_prob: (B,) mean probability
             confidence: (B,) confidence score (1 - normalized variance)
         """
-        # Enable dropout during inference
-        self.train()
+        # Enable dropout during inference unless ablation no_uncertainty
+        if self.ablation != 'no_uncertainty':
+            self.train()
         
         preds = []
         for _ in range(self.mc_passes):
