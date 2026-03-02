@@ -239,12 +239,20 @@ class FusionModule(nn.Module):
         """
         Args:
             nodule_feats: (B, 512)
-            context_feats: (B, 256)
+            context_feats: (B, 256) (may be all zeros if ablation_no_context)
         Returns:
             fused: (B, 256)
         """
         combined = torch.cat([nodule_feats, context_feats], dim=-1)  # (B, 768)
         proj = self.proj_in(combined)  # (B, fused_dim*2)
+        
+        # Check if context_feats are ALL zeros (ablation_no_context)
+        # If so, avoid MultiheadAttention as it can cause NaN gradients with zero-variance inputs
+        if torch.sum(torch.abs(context_feats)) < 1e-6:
+            # Bypass attention entirely: just use the initial projection
+            fused = self.ffn(proj)  # proj is (B, fused_dim*2), matching ffn input
+            fused = self.norm(fused)
+            return fused
 
         # Self-attention expects (B, seq_len, embed_dim) — treat as seq_len=1
         proj = proj.unsqueeze(1)  # (B, 1, fused_dim*2)
