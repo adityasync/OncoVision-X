@@ -188,6 +188,21 @@ def create_fold_dataloaders(config, fold_id, logger):
     from generate_metadata import balance_samples
     train_df = balance_samples(train_df)
     
+    # Subsample validation set if too large (speeds up epochs dramatically)
+    MAX_VAL_SAMPLES = 5000
+    if len(val_df) > MAX_VAL_SAMPLES:
+        # Stratified subsample: keep class ratio
+        pos_val = val_df[val_df['label'] == 1]
+        neg_val = val_df[val_df['label'] == 0]
+        pos_ratio = len(pos_val) / len(val_df)
+        n_pos = max(int(MAX_VAL_SAMPLES * pos_ratio), min(len(pos_val), 50))
+        n_neg = MAX_VAL_SAMPLES - n_pos
+        val_df = pd.concat([
+            pos_val.sample(n=min(n_pos, len(pos_val)), random_state=fold_id),
+            neg_val.sample(n=min(n_neg, len(neg_val)), random_state=fold_id)
+        ]).sample(frac=1, random_state=fold_id)  # shuffle
+        logger.info(f"  Val subsampled: {len(val_df)} (from {MAX_VAL_SAMPLES}+ original)")
+    
     # Save fold-specific CSVs
     fold_metadata_dir = metadata_dir / f'fold{fold_id}'
     fold_metadata_dir.mkdir(parents=True, exist_ok=True)
