@@ -274,6 +274,11 @@ class Trainer:
             labels = labels.to(self.device)
 
             logits = val_model(nodule, context)
+            
+            # Replace NaN logits with 0 (uncertain) to prevent metric crashes
+            if torch.isnan(logits).any():
+                logits = torch.nan_to_num(logits, nan=0.0)
+            
             loss, _ = self.criterion(logits, labels)
 
             if not torch.isnan(loss):
@@ -290,14 +295,20 @@ class Trainer:
         # Compute metrics
         metrics = self._compute_metrics(all_preds, all_labels)
 
-        # Debug: prediction distribution
+        # Debug: prediction distribution (safe for NaN arrays)
         preds_arr = np.array(all_preds)
         labels_arr = np.array(all_labels)
-        self.logger.info(
-            f"Epoch {epoch+1} | Val preds: min={preds_arr.min():.4f} "
-            f"max={preds_arr.max():.4f} mean={preds_arr.mean():.4f} | "
-            f"Labels: {int(labels_arr.sum())}/{len(labels_arr)} positive"
-        )
+        nan_count = np.isnan(preds_arr).sum()
+        if nan_count > 0:
+            self.logger.warning(
+                f"Epoch {epoch+1} | Val preds contain {nan_count} NaN values!"
+            )
+        else:
+            self.logger.info(
+                f"Epoch {epoch+1} | Val preds: min={preds_arr.min():.4f} "
+                f"max={preds_arr.max():.4f} mean={preds_arr.mean():.4f} | "
+                f"Labels: {int(labels_arr.sum())}/{len(labels_arr)} positive"
+            )
 
         self.logger.info(
             f"Epoch {epoch+1} | Val Loss: {avg_loss:.4f} | "
@@ -351,7 +362,7 @@ class Trainer:
 
     def load_checkpoint(self, checkpoint_path):
         """Load model checkpoint."""
-        ckpt = torch.load(checkpoint_path, map_location=self.device)
+        ckpt = torch.load(checkpoint_path, map_location=self.device, weights_only=False)
         
         if isinstance(self.model, nn.DataParallel):
             self.model.module.load_state_dict(ckpt['model_state_dict'])

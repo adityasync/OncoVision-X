@@ -389,61 +389,52 @@ def generate_all_plots(labels, probs, output_dir, mean_probs=None,
 
     plots = {}
 
+    # Helper to safely generate plots
+    def _safe_plot(name, func, *args, **kwargs):
+        try:
+            func(*args, **kwargs)
+            plots[name] = str(args[-1]) if args else ''
+        except Exception as e:
+            logger.warning(f"  Failed to generate {name}: {e}")
+
     # 1. ROC Curve
     logger.info("  Generating ROC curve...")
-    p = output_dir / 'roc_curve.png'
-    plot_roc_curve(labels, probs, p)
-    plots['roc_curve'] = str(p)
+    _safe_plot('roc_curve', plot_roc_curve, labels, probs, output_dir / 'roc_curve.png')
 
     # 2. Precision-Recall Curve
     logger.info("  Generating PR curve...")
-    p = output_dir / 'pr_curve.png'
-    plot_precision_recall_curve(labels, probs, p)
-    plots['pr_curve'] = str(p)
+    _safe_plot('pr_curve', plot_precision_recall_curve, labels, probs, output_dir / 'pr_curve.png')
 
     # 3. Confusion Matrix
     logger.info("  Generating confusion matrix...")
-    p = output_dir / 'confusion_matrix.png'
-    plot_confusion_matrix(labels, probs, p)
-    plots['confusion_matrix'] = str(p)
+    _safe_plot('confusion_matrix', plot_confusion_matrix, labels, probs, output_dir / 'confusion_matrix.png')
 
     # 4. FROC Curve
     logger.info("  Generating FROC curve...")
-    p = output_dir / 'froc_curve.png'
-    plot_froc_curve(labels, probs, p)
-    plots['froc_curve'] = str(p)
+    _safe_plot('froc_curve', plot_froc_curve, labels, probs, output_dir / 'froc_curve.png')
 
     # 5. Calibration Diagram
     logger.info("  Generating calibration diagram...")
-    p = output_dir / 'calibration_diagram.png'
-    plot_calibration_diagram(labels, probs, p)
-    plots['calibration_diagram'] = str(p)
+    _safe_plot('calibration_diagram', plot_calibration_diagram, labels, probs, output_dir / 'calibration_diagram.png')
 
     # 6. Score Distribution
     logger.info("  Generating score distribution...")
-    p = output_dir / 'score_distribution.png'
-    plot_score_distribution(labels, probs, p)
-    plots['score_distribution'] = str(p)
+    _safe_plot('score_distribution', plot_score_distribution, labels, probs, output_dir / 'score_distribution.png')
 
     # 7. Uncertainty Distribution (if MC Dropout was run)
     if mean_probs is not None and confidences is not None:
         logger.info("  Generating uncertainty plots...")
-        p = output_dir / 'uncertainty_distribution.png'
-        plot_uncertainty_distribution(mean_probs, confidences, labels, p)
-        plots['uncertainty_distribution'] = str(p)
+        _safe_plot('uncertainty_distribution', plot_uncertainty_distribution,
+                   mean_probs, confidences, labels, output_dir / 'uncertainty_distribution.png')
 
     # 8. Training Curves (if log file provided)
     if log_path and Path(log_path).exists():
         logger.info("  Generating training curves...")
-        p = output_dir / 'training_curves.png'
-        plot_training_curves(log_path, p)
-        plots['training_curves'] = str(p)
+        _safe_plot('training_curves', plot_training_curves, log_path, output_dir / 'training_curves.png')
 
     # 9. Subgroup Analysis
     logger.info("  Generating subgroup analysis...")
-    p = output_dir / 'subgroup_analysis.png'
-    plot_subgroup_analysis(labels, probs, metadata_df, p)
-    plots['subgroup_analysis'] = str(p)
+    _safe_plot('subgroup_analysis', plot_subgroup_analysis, labels, probs, metadata_df, output_dir / 'subgroup_analysis.png')
 
     logger.info(f"  All plots saved to {output_dir}/")
     return plots

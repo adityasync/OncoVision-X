@@ -87,10 +87,11 @@ def load_all_experiment_results(base_dir='experiments'):
         results = exp_manager.load_results()
         
         if results is not None:
+            test_results = results.get('test_results', results)
             experiments_data.append({
                 'name': exp_name,
                 'display_name': format_experiment_name(exp_name),
-                'results': results['test_results']
+                'results': test_results
             })
             success(f"Loaded: {exp_name}")
         else:
@@ -122,13 +123,13 @@ def create_comparison_table(experiments_data, output_dir):
         res = exp['results']
         data.append({
             'Method': exp['display_name'],
-            'AUC': f"{res['auc_roc']:.4f}",
-            'Sensitivity': f"{res['sensitivity']*100:.1f}%",
-            'Specificity': f"{res['specificity']*100:.1f}%",
-            'Precision': f"{res['precision']*100:.1f}%",
-            'F1-Score': f"{res['f1_score']:.4f}",
-            'ECE': f"{res['ece']:.4f}",
-            'FP/Scan': f"{res['fp_per_scan']:.2f}"
+            'AUC': f"{res.get('auc_roc', 0):.4f}",
+            'Sensitivity': f"{res.get('sensitivity', 0)*100:.1f}%",
+            'Specificity': f"{res.get('specificity', 0)*100:.1f}%",
+            'Precision': f"{res.get('precision', 0)*100:.1f}%",
+            'F1-Score': f"{res.get('f1_score', res.get('f1', 0)):.4f}",
+            'ECE': f"{res.get('ece', 0):.4f}",
+            'FP/Scan': f"{res.get('fp_per_scan', 0):.2f}"
         })
     
     df = pd.DataFrame(data)
@@ -158,9 +159,9 @@ def create_comparison_plots(experiments_data, output_dir):
     
     # Extract metrics
     names = [exp['display_name'] for exp in experiments_data]
-    aucs = [exp['results']['auc_roc'] for exp in experiments_data]
-    sensitivities = [exp['results']['sensitivity'] * 100 for exp in experiments_data]
-    specificities = [exp['results']['specificity'] * 100 for exp in experiments_data]
+    aucs = [exp['results'].get('auc_roc', 0) for exp in experiments_data]
+    sensitivities = [exp['results'].get('sensitivity', 0) * 100 for exp in experiments_data]
+    specificities = [exp['results'].get('specificity', 0) * 100 for exp in experiments_data]
     
     # Create figure with subplots
     fig, axes = plt.subplots(2, 2, figsize=(16, 12))
@@ -173,7 +174,8 @@ def create_comparison_plots(experiments_data, output_dir):
     bars = ax.barh(names, aucs, color=colors, alpha=0.8, edgecolor='black')
     ax.set_xlabel('AUC-ROC', fontsize=12, fontweight='bold')
     ax.set_title('AUC-ROC Comparison', fontsize=14, fontweight='bold')
-    ax.set_xlim([0.85, 1.0])
+    min_auc = min(aucs) if aucs else 0
+    ax.set_xlim([max(0, min_auc - 0.05), 1.0])
     for i, (bar, auc) in enumerate(zip(bars, aucs)):
         ax.text(auc + 0.002, bar.get_y() + bar.get_height()/2, 
                 f'{auc:.4f}', va='center', fontsize=10, fontweight='bold')
@@ -184,7 +186,8 @@ def create_comparison_plots(experiments_data, output_dir):
     bars = ax.barh(names, sensitivities, color=colors, alpha=0.8, edgecolor='black')
     ax.set_xlabel('Sensitivity (%)', fontsize=12, fontweight='bold')
     ax.set_title('Sensitivity Comparison', fontsize=14, fontweight='bold')
-    ax.set_xlim([75, 100])
+    min_sens = min(sensitivities) if sensitivities else 0
+    ax.set_xlim([max(0, min_sens - 10), 100])
     for i, (bar, sens) in enumerate(zip(bars, sensitivities)):
         ax.text(sens + 0.5, bar.get_y() + bar.get_height()/2,
                 f'{sens:.1f}%', va='center', fontsize=10, fontweight='bold')
@@ -195,7 +198,8 @@ def create_comparison_plots(experiments_data, output_dir):
     bars = ax.barh(names, specificities, color=colors, alpha=0.8, edgecolor='black')
     ax.set_xlabel('Specificity (%)', fontsize=12, fontweight='bold')
     ax.set_title('Specificity Comparison', fontsize=14, fontweight='bold')
-    ax.set_xlim([75, 95])
+    min_spec = min(specificities) if specificities else 0
+    ax.set_xlim([max(0, min_spec - 10), 100])
     for i, (bar, spec) in enumerate(zip(bars, specificities)):
         ax.text(spec + 0.5, bar.get_y() + bar.get_height()/2,
                 f'{spec:.1f}%', va='center', fontsize=10, fontweight='bold')
@@ -205,11 +209,15 @@ def create_comparison_plots(experiments_data, output_dir):
     ax = axes[1, 1]
     categories = ['AUC', 'Sensitivity', 'Specificity']
     
+    # Use first experiment for radar (whichever is available)
+    radar_exp = experiments_data[0]
+    radar_label = radar_exp['display_name']
+    
     # Normalize metrics to 0-100 scale for radar
     full_model_data = [
-        experiments_data[0]['results']['auc_roc'] * 100,
-        experiments_data[0]['results']['sensitivity'] * 100,
-        experiments_data[0]['results']['specificity'] * 100
+        radar_exp['results'].get('auc_roc', 0) * 100,
+        radar_exp['results'].get('sensitivity', 0) * 100,
+        radar_exp['results'].get('specificity', 0) * 100
     ]
     
     angles = np.linspace(0, 2 * np.pi, len(categories), endpoint=False).tolist()
@@ -217,7 +225,7 @@ def create_comparison_plots(experiments_data, output_dir):
     angles += angles[:1]
     
     ax = plt.subplot(224, projection='polar')
-    ax.plot(angles, full_model_data, 'o-', linewidth=2, label='DCA-Net (Full)', color='#2E86AB')
+    ax.plot(angles, full_model_data, 'o-', linewidth=2, label=radar_label, color='#2E86AB')
     ax.fill(angles, full_model_data, alpha=0.25, color='#2E86AB')
     ax.set_xticks(angles[:-1])
     ax.set_xticklabels(categories, fontsize=11)
@@ -239,17 +247,20 @@ def create_ablation_analysis(experiments_data, output_dir):
     """Create ablation study specific analysis"""
     
     # Get full model as baseline
-    full_model = next(exp for exp in experiments_data if exp['name'] == 'full_model')
-    full_auc = full_model['results']['auc_roc']
+    full_model = next((exp for exp in experiments_data if exp['name'] == 'full_model'), None)
+    if full_model is None:
+        print(f"  {DIM}Skipping ablation analysis (full_model not found){RESET}")
+        return
+    full_auc = full_model['results'].get('auc_roc', 0)
     
     # Calculate differences for ablations
     ablation_data = []
     for exp in experiments_data:
         if 'ablation' in exp['name']:
-            delta_auc = (exp['results']['auc_roc'] - full_auc) * 100
+            delta_auc = (exp['results'].get('auc_roc', 0) - full_auc) * 100
             ablation_data.append({
                 'Component': exp['display_name'].replace('DCA-Net (No ', '').replace(')', ''),
-                'AUC': f"{exp['results']['auc_roc']:.4f}",
+                'AUC': f"{exp['results'].get('auc_roc', 0):.4f}",
                 'Δ AUC': f"{delta_auc:+.2f}%",
                 'Impact': 'High' if abs(delta_auc) > 2 else 'Medium' if abs(delta_auc) > 1 else 'Low'
             })

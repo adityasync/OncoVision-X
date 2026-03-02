@@ -152,7 +152,8 @@ def evaluate_model(model, dataloader, device, exp_manager, split='test'):
             predictions_mc = torch.stack(predictions_mc)
             predictions_mean = predictions_mc.mean(dim=0)
             predictions_var = predictions_mc.var(dim=0)
-            confidence = 1 - (predictions_var / (predictions_var.max() + 1e-7))
+            var_max = predictions_var.max()
+            confidence = 1 - (predictions_var / (var_max + 1e-7)) if var_max > 0 else torch.ones_like(predictions_var)
             
             all_predictions.append(predictions_mean)
             all_targets.append(targets.cpu())
@@ -191,17 +192,34 @@ def calculate_all_metrics(predictions, targets, confidences, threshold=0.5):
     
     results = {}
     
+    # Filter NaN predictions
+    valid_mask = ~np.isnan(predictions)
+    if not valid_mask.all():
+        print(f"  Warning: {(~valid_mask).sum()} NaN predictions filtered")
+        predictions = predictions[valid_mask]
+        targets = targets[valid_mask]
+        confidences = confidences[valid_mask]
+    
     # Binary predictions
     pred_binary = (predictions > threshold).astype(int)
     
     # 1. AUC-ROC
-    results['auc_roc'] = roc_auc_score(targets, predictions)
+    try:
+        results['auc_roc'] = roc_auc_score(targets, predictions)
+    except Exception:
+        results['auc_roc'] = 0.0
     
     # 2. Average Precision (PR-AUC)
-    results['average_precision'] = average_precision_score(targets, predictions)
+    try:
+        results['average_precision'] = average_precision_score(targets, predictions)
+    except Exception:
+        results['average_precision'] = 0.0
     
     # 3. Confusion Matrix
-    tn, fp, fn, tp = confusion_matrix(targets, pred_binary).ravel()
+    try:
+        tn, fp, fn, tp = confusion_matrix(targets, pred_binary, labels=[0, 1]).ravel()
+    except Exception:
+        tn, fp, fn, tp = 0, 0, 0, 0
     results['true_negatives'] = int(tn)
     results['false_positives'] = int(fp)
     results['false_negatives'] = int(fn)
@@ -218,18 +236,19 @@ def calculate_all_metrics(predictions, targets, confidences, threshold=0.5):
                          if (results['precision'] + results['sensitivity']) > 0 else 0.0
     
     # 6. Accuracy
-    results['accuracy'] = (tp + tn) / (tp + tn + fp + fn)
+    total = tp + tn + fp + fn
+    results['accuracy'] = (tp + tn) / total if total > 0 else 0.0
     
     # 7. Expected Calibration Error
     results['ece'] = calculate_ece(predictions, targets)
     
     # 8. Confidence statistics
     correct = (pred_binary == targets)
-    results['avg_confidence_correct'] = confidences[correct].mean()
-    results['avg_confidence_incorrect'] = confidences[~correct].mean()
+    results['avg_confidence_correct'] = float(confidences[correct].mean()) if correct.any() else 0.0
+    results['avg_confidence_incorrect'] = float(confidences[~correct].mean()) if (~correct).any() else 0.0
     
     # 9. False Positives per Scan (assuming ~30 candidates per scan)
-    total_scans = len(targets) / 30
+    total_scans = max(len(targets) / 30, 1)
     results['fp_per_scan'] = fp / total_scans
     
     return results
@@ -547,7 +566,7 @@ if __name__ == '__main__':
         checkpoint_path = exp_manager.get_checkpoint_path(args.checkpoint)
         
     if os.path.exists(checkpoint_path):
-        checkpoint = torch.load(checkpoint_path, map_location=device)
+        checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
         model.load_state_dict(checkpoint['model_state_dict'])
         success(f"Loaded checkpoint from {checkpoint_path}")
     else:

@@ -243,7 +243,7 @@ def train_experiment(args):
         model = model.to(device)
         best_checkpoint_path = exp_manager.get_checkpoint_path('best')
         if os.path.exists(best_checkpoint_path):
-            checkpoint = torch.load(best_checkpoint_path, map_location=device)
+            checkpoint = torch.load(best_checkpoint_path, map_location=device, weights_only=False)
             model.load_state_dict(checkpoint['model_state_dict'])
             success(f"Loaded checkpoint from {best_checkpoint_path}")
         else:
@@ -280,7 +280,7 @@ def train_experiment(args):
     model = model.to(device)
     best_checkpoint_path = exp_manager.get_checkpoint_path('best')
     if os.path.exists(best_checkpoint_path):
-        checkpoint = torch.load(best_checkpoint_path, map_location=device)
+        checkpoint = torch.load(best_checkpoint_path, map_location=device, weights_only=False)
         model.load_state_dict(checkpoint['model_state_dict'])
         
         # Evaluate
