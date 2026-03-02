@@ -57,7 +57,7 @@ def banner(experiment):
 ║                                                                    ║
 ║   Dual-Context Attention Network                                   ║
 ║   Universal Evaluation Pipeline                                    ║
-║   Experiment: {experiment:<49s}║
+║   Experiment: {experiment:<49s}                                    ║
 ║                                                                    ║
 ╚════════════════════════════════════════════════════════════════════╝{RESET}
 """)
