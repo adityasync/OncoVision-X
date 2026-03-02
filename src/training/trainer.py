@@ -299,6 +299,11 @@ class Trainer:
         preds_arr = np.array(all_preds)
         labels_arr = np.array(all_labels)
         nan_count = np.isnan(preds_arr).sum()
+        
+        # Track prediction std for collapse detection
+        valid_preds = preds_arr[~np.isnan(preds_arr)]
+        metrics['_preds_std'] = float(valid_preds.std()) if len(valid_preds) > 0 else 0.0
+        
         if nan_count > 0:
             self.logger.warning(
                 f"Epoch {epoch+1} | Val preds contain {nan_count} NaN values!"
@@ -432,11 +437,10 @@ class Trainer:
             train_loss = train_result[0]
             nan_count = train_result[1] if len(train_result) > 1 else 0
 
-            # NaN recovery: if >20% batches are NaN, weights are corrupted
-            nan_threshold = len(self.train_loader) * 0.2
-            if nan_count > nan_threshold:
+            # NaN recovery: even a few NaN batches can corrupt weights
+            if nan_count >= 3:
                 self.logger.warning(
-                    f"\nWARNING: {nan_count} NaN batches detected — weights corrupted!"
+                    f"\nWARNING: {nan_count} NaN batches detected — weights likely corrupted!"
                 )
                 recovery_ckpt = self.ckpt_dir / 'best.pth'
                 if not recovery_ckpt.exists():
@@ -465,6 +469,33 @@ class Trainer:
                 f"Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | "
                 f"Val AUC: {val_auc:.4f} | Time: {elapsed:.1f}s"
             )
+
+            # Detect model collapse: all predictions are constant (e.g., all 0.5)
+            preds_std = val_metrics.get('_preds_std', 1.0)
+            if preds_std < 0.001 and epoch > self.warmup_epochs:
+                self._collapse_count = getattr(self, '_collapse_count', 0) + 1
+                self.logger.warning(
+                    f"Model collapse detected! Val preds are constant "
+                    f"(std={preds_std:.6f}). Collapse count: {self._collapse_count}"
+                )
+                # Auto-recover if we have a good checkpoint and haven't looped too many times
+                if self._collapse_count <= 3:
+                    recovery_ckpt = self.ckpt_dir / 'best.pth'
+                    if recovery_ckpt.exists():
+                        self.logger.info(f"Auto-recovering from: {recovery_ckpt}")
+                        self.load_checkpoint(recovery_ckpt)
+                        for pg in self.optimizer.param_groups:
+                            pg['lr'] *= 0.5
+                        self.logger.info(
+                            f"Reduced LR to {self.optimizer.param_groups[0]['lr']:.2e}"
+                        )
+                        continue
+                else:
+                    self.logger.warning(
+                        "Multiple collapse recoveries failed — continuing with current weights"
+                    )
+            else:
+                self._collapse_count = 0  # Reset on healthy epoch
 
             # Early stopping on AUC-ROC
             is_best = val_auc > self.best_val_auc
