@@ -17,19 +17,50 @@ import json
 from pathlib import Path
 import sys
 import os
+import yaml
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utils.experiment_manager import ExperimentManager
+from scripts.utils.experiment_manager import ExperimentManager
+from src.data.dataset import create_data_loaders
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Evaluate experiment')
     parser.add_argument('--experiment', type=str, required=True)
     parser.add_argument('--checkpoint', type=str, default='best',
-                       choices=['best', 'last'])
+                       help='Checkpoint path or type (best/last)')
     parser.add_argument('--split', type=str, default='test',
                        choices=['train', 'val', 'test'])
     return parser.parse_args()
+
+
+def create_model(config):
+    """Create model based on config"""
+    model_type = config.get('model', {}).get('type', 'dca_net')
+    
+    if model_type == 'dca_net':
+        ablation = config.get('model', {}).get('ablation', None)
+        if not ablation and 'ablation' in config:
+            ablation = config['ablation']
+        
+        from src.models.dca_net import DCANet
+        model = DCANet(config)
+    
+    elif model_type == 'resnet3d18':
+        from src.models.baselines import ResNet3D18
+        num_classes = config.get('model', {}).get('num_classes', 1)
+        model = ResNet3D18(num_classes=num_classes)
+    
+    elif model_type == 'resnet2d18':
+        from src.models.baselines import ResNet2D18SliceLevel
+        num_classes = config.get('model', {}).get('num_classes', 1)
+        model = ResNet2D18SliceLevel(num_classes=num_classes)
+    
+    else:
+        raise ValueError(f"Unknown model type: {model_type}")
+    
+    return model
 
 
 def evaluate_model(model, dataloader, device, exp_manager, split='test'):
@@ -443,15 +474,41 @@ if __name__ == '__main__':
     # Load experiment
     exp_manager = ExperimentManager(args.experiment)
     
-    # Load model
-    checkpoint_path = exp_manager.get_checkpoint_path(args.checkpoint)
-    # Load your model here
+    config_path = f'configs/{args.experiment}.yaml'
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
     
-    # Load dataloader
-    # test_loader = create_dataloader(config, args.split)
+    # Load dataloaders
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print("Creating model...")
+    model = create_model(config)
+    model = model.to(device)
+    
+    # Load model Weights
+    if os.path.exists(args.checkpoint) and os.path.isfile(args.checkpoint):
+        checkpoint_path = args.checkpoint
+    else:
+        checkpoint_path = exp_manager.get_checkpoint_path(args.checkpoint)
+        
+    if os.path.exists(checkpoint_path):
+        checkpoint = torch.load(checkpoint_path, map_location=device)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        print(f"Loaded checkpoint from {checkpoint_path}")
+    else:
+        print(f"Failed to find checkpoint at {checkpoint_path}")
+        sys.exit(1)
+        
+    print("Loading datasets...")
+    train_loader, val_loader, test_loader = create_data_loaders(config)
+    if args.split == 'train':
+        target_loader = train_loader
+    elif args.split == 'val':
+        target_loader = val_loader
+    else:
+        target_loader = test_loader
     
     # Evaluate
-    # results = evaluate_model(model, test_loader, device, exp_manager, args.split)
+    results = evaluate_model(model, target_loader, device, exp_manager, args.split)
     
     # Print summary
-    # print_results_summary(results)
+    print_results_summary(results)

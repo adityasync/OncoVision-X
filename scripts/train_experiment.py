@@ -4,17 +4,23 @@ Universal Training Script for All Experiments
 """
 
 import argparse
+import sys
+import os
 import yaml
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
-import sys
-import os
+from datetime import datetime
+from pathlib import Path
+
+# Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utils.experiment_manager import ExperimentManager
-from utils.metrics_tracker import MetricsTracker
-# Import your models, datasets, etc.
+from scripts.utils.experiment_manager import ExperimentManager
+from src.utils.logging_utils import setup_logging
+from src.data.dataset import create_data_loaders
+from src.training.trainer import Trainer
+from src.evaluation.evaluator import Evaluator
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train experiment')
@@ -54,6 +60,33 @@ def parse_args():
         help='Only run evaluation on test set'
     )
     
+    parser.add_argument(
+        '--batch-size',
+        type=int,
+        default=None,
+        help='Override batch size'
+    )
+    
+    parser.add_argument(
+        '--epochs',
+        type=int,
+        default=None,
+        help='Override number of epochs'
+    )
+    
+    parser.add_argument(
+        '--lr',
+        type=float,
+        default=None,
+        help='Override learning rate'
+    )
+    
+    parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help='Run only a few batches for debugging'
+    )
+    
     return parser.parse_args()
 
 
@@ -70,20 +103,25 @@ def load_config(experiment_name, config_path=None):
 
 def create_model(config):
     """Create model based on config"""
-    model_type = config['model']['type']
+    model_type = config.get('model', {}).get('type', 'dca_net')
     
     if model_type == 'dca_net':
-        ablation = config.get('ablation', None)
-        from models.dca_net import DCANet
-        model = DCANet(config, ablation=ablation)
+        ablation = config.get('model', {}).get('ablation', None)
+        if not ablation and 'ablation' in config:
+            ablation = config['ablation']
+        
+        from src.models.dca_net import DCANet
+        model = DCANet(config) # The constructor handles the ablation internally 
     
     elif model_type == 'resnet3d18':
-        from models.baselines import ResNet3D18
-        model = ResNet3D18(config)
+        from src.models.baselines import ResNet3D18
+        num_classes = config.get('model', {}).get('num_classes', 1)
+        model = ResNet3D18(num_classes=num_classes)
     
     elif model_type == 'resnet2d18':
-        from models.baselines import ResNet2D18
-        model = ResNet2D18(config)
+        from src.models.baselines import ResNet2D18SliceLevel
+        num_classes = config.get('model', {}).get('num_classes', 1)
+        model = ResNet2D18SliceLevel(num_classes=num_classes)
     
     else:
         raise ValueError(f"Unknown model type: {model_type}")
@@ -99,11 +137,32 @@ def train_experiment(args):
     
     # 2. Load configuration
     config = load_config(args.experiment, args.config)
+    
+    if args.batch_size:
+        if 'training' not in config: config['training'] = {}
+        config['training']['batch_size'] = args.batch_size
+    if args.epochs:
+        if 'training' not in config: config['training'] = {}
+        config['training']['num_epochs'] = args.epochs
+    if args.lr:
+        if 'training' not in config: config['training'] = {}
+        config['training']['learning_rate'] = args.lr
+        
+    # Override logging/checkpoint paths in config to use experiment manager
+    if 'logging' not in config:
+        config['logging'] = {}
+    config['logging']['log_dir'] = str(exp_manager.dirs['logs'])
+    config['logging']['checkpoint_dir'] = str(exp_manager.dirs['checkpoints'])
+    
+    if 'paths' not in config:
+        config['paths'] = {}
+    config['paths']['log_dir'] = str(exp_manager.dirs['logs'])
+    config['paths']['model_save_dir'] = str(exp_manager.dirs['checkpoints'])
+    
     exp_manager.save_config(config)
     
     # 3. Setup logging
-    log_path = exp_manager.get_log_path()
-    # Setup your logger here
+    logger = setup_logging(config)
     
     print(f"\n{'='*60}")
     print(f"EXPERIMENT: {args.experiment}")
@@ -113,132 +172,84 @@ def train_experiment(args):
     print("Creating model...")
     model = create_model(config)
     
-    # Count parameters
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"  Total parameters: {total_params:,}")
     print(f"  Trainable parameters: {trainable_params:,}")
     
-    # 5. Setup device and DataParallel
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    if torch.cuda.device_count() > 1:
-        print(f"  Using {torch.cuda.device_count()} GPUs")
-        model = nn.DataParallel(model, device_ids=[0, 1])
-    model = model.to(device)
-    
-    # 6. Create dataloaders
+    # 5. Create dataloaders
     print("\nCreating dataloaders...")
-    # Your dataloader creation logic here
-    # train_loader = create_dataloader(config, 'train')
-    # val_loader = create_dataloader(config, 'val')
-    # test_loader = create_dataloader(config, 'test')
+    train_loader, val_loader, test_loader = create_data_loaders(config)
+    print(f"  Train batches: {len(train_loader)}")
+    print(f"  Val batches: {len(val_loader)}")
     
-    # 7. Setup optimizer and loss
+    # 6. Evaluation Only Mode
+    if args.evaluate_only:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        model = model.to(device)
+        best_checkpoint_path = exp_manager.get_checkpoint_path('best')
+        if os.path.exists(best_checkpoint_path):
+            checkpoint = torch.load(best_checkpoint_path, map_location=device)
+            model.load_state_dict(checkpoint['model_state_dict'])
+            print(f"Loaded checkpoint from {best_checkpoint_path}")
+        else:
+            print("No checkpoint found to evaluate!")
+            return
+            
+        evaluator = Evaluator(model, test_loader, device=device, logger=logger)
+        results = evaluator.evaluate(output_dir=str(exp_manager.dirs['metrics']), run_uncertainty=True)
+        return
+        
+    # 7. Setup Training
     print("\nSetting up training...")
-    optimizer = torch.optim.AdamW(
-        model.parameters(),
-        lr=config['training']['learning_rate'],
-        weight_decay=config['training']['weight_decay']
-    )
+    trainer = Trainer(model, config, train_loader, val_loader, logger=logger)
     
-    # Your loss function
-    # criterion = create_loss_function(config)
-    
-    # 8. Setup metrics tracker
-    # Commented out as MetricsTracker is a placeholder
-    # metrics_tracker = MetricsTracker(exp_manager)
-    
-    # 9. Training loop
+    if args.resume:
+        last_checkpoint_path = exp_manager.get_checkpoint_path('last')
+        if os.path.exists(last_checkpoint_path):
+            trainer.load_checkpoint(last_checkpoint_path)
+            print(f"Resumed from {last_checkpoint_path}")
+            
+    # 8. Training loop
     print(f"\n{'='*60}")
     print(f"STARTING TRAINING")
     print(f"{'='*60}\n")
     
-    best_auc = 0.0
+    num_epochs = config.get('training', {}).get('num_epochs', 60)
+    trainer.train(num_epochs=num_epochs, dry_run=args.dry_run)
     
-    for epoch in range(config['training']['num_epochs']):
-        print(f"\nEpoch {epoch+1}/{config['training']['num_epochs']}")
-        
-        # Train epoch
-        # train_metrics = train_epoch(
-        #     model, train_loader, optimizer, criterion, device, config
-        # )
-        
-        # Validate epoch
-        # val_metrics = validate_epoch(
-        #     model, val_loader, criterion, device
-        # )
-        
-        # Track metrics
-        # metrics_tracker.update(epoch, train_metrics, val_metrics)
-        
-        # Save best checkpoint
-        # if val_metrics['auc'] > best_auc:
-        #     best_auc = val_metrics['auc']
-        #     checkpoint_path = exp_manager.get_checkpoint_path('best')
-        #     save_checkpoint(model, optimizer, epoch, val_metrics, checkpoint_path)
-        #     print(f"✓ New best AUC: {best_auc:.4f} - saved to {checkpoint_path}")
-        
-        # Save last checkpoint
-        # checkpoint_path = exp_manager.get_checkpoint_path('last')
-        # save_checkpoint(model, optimizer, epoch, val_metrics, checkpoint_path)
-        
-        # Print summary
-        # print(f"  Train Loss: {train_metrics['loss']:.4f}")
-        # print(f"  Val Loss: {val_metrics['loss']:.4f}")
-        # print(f"  Val AUC: {val_metrics['auc']:.4f}")
-    
-    # 10. Final evaluation on test set
     print(f"\n{'='*60}")
     print(f"FINAL EVALUATION ON TEST SET")
     print(f"{'='*60}\n")
     
     # Load best checkpoint
-    # best_checkpoint_path = exp_manager.get_checkpoint_path('best')
-    # checkpoint = torch.load(best_checkpoint_path)
-    # model.load_state_dict(checkpoint['model_state_dict'])
-    
-    # Evaluate
-    # test_results = evaluate_model(
-    #     model, test_loader, device, exp_manager
-    # )
-    
-    # Save results
-    # final_results = {
-    #     'experiment': args.experiment,
-    #     'best_epoch': checkpoint['epoch'],
-    #     'best_val_auc': checkpoint['val_auc'],
-    #     'test_results': test_results,
-    #     'config': config
-    # }
-    
-    # exp_manager.save_results(final_results)
-    # exp_manager.save_metadata()
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = model.to(device)
+    best_checkpoint_path = exp_manager.get_checkpoint_path('best')
+    if os.path.exists(best_checkpoint_path):
+        checkpoint = torch.load(best_checkpoint_path, map_location=device)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        
+        # Evaluate
+        evaluator = Evaluator(model, test_loader, device=device, logger=logger)
+        test_results = evaluator.evaluate(output_dir=str(exp_manager.dirs['metrics']), run_uncertainty=True)
+        
+        # Save results map
+        final_results = {
+            'experiment': args.experiment,
+            'best_epoch': checkpoint.get('epoch', 0),
+            'best_val_auc': checkpoint.get('val_auc', 0.0),
+            'test_results': test_results,
+            'config': config
+        }
+        
+        exp_manager.save_results(final_results)
+        exp_manager.save_metadata()
     
     print(f"\n{'='*60}")
     print(f"EXPERIMENT COMPLETE!")
     print(f"{'='*60}")
-    # print(f"Best Val AUC: {checkpoint['val_auc']:.4f}")
-    # print(f"Test AUC: {test_results['auc']:.4f}")
-    # print(f"Test Sensitivity: {test_results['sensitivity']:.4f}")
-    # print(f"Test Specificity: {test_results['specificity']:.4f}")
     print(f"\nResults saved to: {exp_manager.exp_dir}")
-    
-
-def save_checkpoint(model, optimizer, epoch, metrics, path):
-    """Save model checkpoint"""
-    if isinstance(model, nn.DataParallel):
-        model_state = model.module.state_dict()
-    else:
-        model_state = model.state_dict()
-    
-    torch.save({
-        'epoch': epoch,
-        'model_state_dict': model_state,
-        'optimizer_state_dict': optimizer.state_dict(),
-        'val_auc': metrics['auc'],
-        'val_loss': metrics['loss']
-    }, path)
-
 
 if __name__ == '__main__':
     args = parse_args()

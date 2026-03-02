@@ -85,11 +85,11 @@ def warn(msg):
 
 def setup_logging(fold_id):
     """Setup logging for a specific fold."""
-    log_dir = Path('logs')
-    log_dir.mkdir(exist_ok=True)
+    log_dir = Path(f'experiments/kfold/fold_{fold_id}/logs')
+    log_dir.mkdir(parents=True, exist_ok=True)
     
     ts = time.strftime('%Y%m%d_%H%M%S')
-    log_file = log_dir / f'kfold_fold{fold_id}_{ts}.log'
+    log_file = log_dir / f'training_{ts}.log'
     
     logger = logging.getLogger(f'oncovision-x-fold{fold_id}')
     logger.setLevel(logging.INFO)
@@ -233,8 +233,14 @@ def create_fold_dataloaders(config, fold_id, logger):
     return train_loader, val_loader, test_loader, fold_config
 
 
-def evaluate_fold(model, test_loader, device, logger):
-    """Evaluate a fold on test set and return metrics."""
+def evaluate_fold(model, test_loader, device, logger, fold_id=None):
+    """Evaluate a fold on test set and return metrics + raw predictions.
+    
+    Returns:
+        metrics: dict of computed metrics
+        preds: numpy array of prediction probabilities
+        labels: numpy array of ground truth labels
+    """
     import torch.nn as nn
     from sklearn.metrics import roc_auc_score, average_precision_score
     from sklearn.metrics import precision_recall_fscore_support, confusion_matrix
@@ -290,7 +296,15 @@ def evaluate_fold(model, test_loader, device, logger):
         metrics['specificity'] = 0.0
         metrics['accuracy'] = 0.0
     
-    return metrics
+    # Save raw predictions and targets for threshold optimization
+    if fold_id is not None:
+        fold_output_dir = Path(f'experiments/kfold/fold_{fold_id}/metrics')
+        fold_output_dir.mkdir(parents=True, exist_ok=True)
+        np.save(fold_output_dir / 'predictions.npy', preds)
+        np.save(fold_output_dir / 'targets.npy', labels)
+        logger.info(f"Saved predictions ({len(preds)}) to {fold_output_dir}")
+    
+    return metrics, preds, labels
 
 
 def main():
@@ -298,6 +312,8 @@ def main():
     parser.add_argument('--config', default='configs/training_config.yaml')
     parser.add_argument('--folds', type=int, default=5, help='Number of folds (max 5)')
     parser.add_argument('--resume', type=int, default=0, help='Resume from fold N')
+    parser.add_argument('--fold', type=int, default=None,
+                        help='Run only a specific fold (0-4)')
     args = parser.parse_args()
     
     with open(args.config) as f:
@@ -305,6 +321,17 @@ def main():
     
     num_folds = min(args.folds, 5)
     all_metrics = {}
+    
+    # If --fold is specified, run only that single fold
+    if args.fold is not None:
+        if args.fold < 0 or args.fold > 4:
+            print(f"{RED}Error: --fold must be 0-4{RESET}")
+            sys.exit(1)
+        start_fold = args.fold
+        end_fold = args.fold + 1
+    else:
+        start_fold = args.resume
+        end_fold = num_folds
     
     banner()
     section("CROSS-VALIDATION SETUP")
@@ -320,7 +347,7 @@ def main():
             mem = torch.cuda.get_device_properties(i).total_memory / 1024**3
             info(f"GPU {i}", f"{name} ({mem:.1f} GB)")
     
-    for fold_id in range(args.resume, num_folds):
+    for fold_id in range(start_fold, end_fold):
         section(f"FOLD {fold_id + 1}/{num_folds}")
         
         logger = setup_logging(fold_id)
@@ -335,7 +362,7 @@ def main():
         logger.info(f"Model parameters: {params:,}")
         
         # Setup checkpoint dir for this fold
-        fold_config['logging']['checkpoint_dir'] = f'results/checkpoints/fold{fold_id}'
+        fold_config['logging']['checkpoint_dir'] = f'experiments/kfold/fold_{fold_id}/checkpoints'
         
         # Train
         trainer = Trainer(model, fold_config, train_loader, val_loader, logger)
@@ -345,7 +372,7 @@ def main():
         logger.info("\nEvaluating on test set...")
         
         # Load best model for this fold
-        best_ckpt = Path(f'results/checkpoints/fold{fold_id}/best.pth')
+        best_ckpt = Path(f'experiments/kfold/fold_{fold_id}/checkpoints/best.pth')
         if best_ckpt.exists():
             ckpt = torch.load(best_ckpt, map_location=trainer.device, weights_only=False)
             if isinstance(trainer.model, torch.nn.DataParallel):
@@ -353,7 +380,9 @@ def main():
             else:
                 trainer.model.load_state_dict(ckpt['model_state_dict'])
         
-        fold_metrics = evaluate_fold(trainer.model, test_loader, trainer.device, logger)
+        fold_metrics, fold_preds, fold_labels = evaluate_fold(
+            trainer.model, test_loader, trainer.device, logger, fold_id=fold_id
+        )
         all_metrics[f'fold_{fold_id}'] = fold_metrics
         
         logger.info(f"\nFold {fold_id} Test Results:")
@@ -375,7 +404,7 @@ def main():
     
     for metric in metric_names:
         values = [all_metrics[f'fold_{i}'][metric] 
-                  for i in range(num_folds) if f'fold_{i}' in all_metrics]
+                  for i in range(start_fold, end_fold) if f'fold_{i}' in all_metrics]
         if values:
             mean = np.mean(values)
             std = np.std(values)
@@ -383,7 +412,7 @@ def main():
             print(f"  {DIM}{metric:>15}:{RESET} {BOLD}{GREEN}{mean:.4f}{RESET} ± {std:.4f}  {values}")
     
     # Save results
-    results_dir = Path('results/kfold')
+    results_dir = Path('experiments/kfold')
     results_dir.mkdir(parents=True, exist_ok=True)
     
     results_file = results_dir / 'kfold_results.json'
@@ -398,7 +427,7 @@ def main():
         json.dump(save_data, f, indent=2, default=str)
     
     print(f"\n  Results saved to: {results_file}")
-    print(f"  Fold checkpoints: results/checkpoints/fold{{0-{num_folds-1}}}/")
+    print(f"  Fold outputs: experiments/kfold/fold_{{0-{num_folds-1}}}/")
     print()
 
 
