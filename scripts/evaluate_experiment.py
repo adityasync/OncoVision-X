@@ -25,6 +25,58 @@ from scripts.utils.experiment_manager import ExperimentManager
 from src.data.dataset import create_data_loaders
 
 
+# ─────────────────────────────────────────────────────────────
+# Display
+# ─────────────────────────────────────────────────────────────
+RED = "\033[91m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+BLUE = "\033[94m"
+CYAN = "\033[96m"
+BOLD = "\033[1m"
+DIM = "\033[2m"
+RESET = "\033[0m"
+
+
+def banner(experiment):
+    print(f"""
+{BOLD}{CYAN}╔════════════════════════════════════════════════════════════════════╗
+║                                                                    ║
+║    ██████╗ ███╗   ██╗ ██████╗ ██████╗                              ║
+║   ██╔═══██╗████╗  ██║██╔════╝██╔═══██╗                             ║
+║   ██║   ██║██╔██╗ ██║██║     ██║   ██║                             ║
+║   ██║   ██║██║╚██╗██║██║     ██║   ██║                             ║
+║   ╚██████╔╝██║ ╚████║╚██████╗╚██████╔╝                             ║
+║    ╚═════╝ ╚═╝  ╚═══╝ ╚═════╝ ╚═════╝                              ║
+║   ██╗   ██╗██╗███████╗██╗ ██████╗ ███╗   ██╗    ██╗  ██╗           ║
+║   ██║   ██║██║██╔════╝██║██╔═══██╗████╗  ██║    ╚██╗██╔╝           ║
+║   ██║   ██║██║███████╗██║██║   ██║██╔██╗ ██║     ╚███╔╝            ║
+║   ╚██╗ ██╔╝██║╚════██║██║██║   ██║██║╚██╗██║     ██╔██╗            ║
+║    ╚████╔╝ ██║███████║██║╚██████╔╝██║ ╚████║    ██╔╝ ██╗           ║
+║     ╚═══╝  ╚═╝╚══════╝╚═╝ ╚═════╝ ╚═╝  ╚═══╝    ╚═╝  ╚═╝           ║
+║                                                                    ║
+║   Dual-Context Attention Network                                   ║
+║   Universal Evaluation Pipeline                                    ║
+║   Experiment: {experiment:<49s}║
+║                                                                    ║
+╚════════════════════════════════════════════════════════════════════╝{RESET}
+""")
+
+
+def section(title):
+    print(f"\n{BOLD}{BLUE}{'─' * 60}")
+    print(f"  {title}")
+    print(f"{'─' * 60}{RESET}")
+
+
+def info(label, value):
+    print(f"  {DIM}{label}:{RESET} {value}")
+
+
+def success(msg):
+    print(f"  {GREEN}✓ {msg}{RESET}")
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Evaluate experiment')
     parser.add_argument('--experiment', type=str, required=True)
@@ -76,7 +128,7 @@ def evaluate_model(model, dataloader, device, exp_manager, split='test'):
     all_targets = []
     all_confidences = []
     
-    print(f"\nRunning inference on {split} set...")
+    section(f"INFERENCE — {split.upper()} SET")
     
     with torch.no_grad():
         for batch_idx, batch in enumerate(dataloader):
@@ -114,7 +166,7 @@ def evaluate_model(model, dataloader, device, exp_manager, split='test'):
     targets = torch.cat(all_targets).numpy().flatten()
     confidences = torch.cat(all_confidences).numpy().flatten()
     
-    print(f"✓ Inference complete: {len(predictions)} samples")
+    success(f"Inference complete: {len(predictions)} samples")
     
     # Calculate all metrics
     results = calculate_all_metrics(
@@ -205,7 +257,7 @@ def calculate_ece(predictions, targets, n_bins=10):
 def generate_all_plots(predictions, targets, confidences, exp_manager, split):
     """Generate all evaluation plots"""
     
-    print("\nGenerating plots...")
+    section("GENERATING PLOTS")
     
     # 1. ROC Curve
     plot_roc_curve(predictions, targets, exp_manager, split)
@@ -225,7 +277,7 @@ def generate_all_plots(predictions, targets, confidences, exp_manager, split):
     # 6. Prediction Distribution
     plot_prediction_distribution(predictions, targets, exp_manager, split)
     
-    print("✓ All plots generated")
+    success("All plots generated")
 
 
 def plot_roc_curve(predictions, targets, exp_manager, split):
@@ -248,7 +300,7 @@ def plot_roc_curve(predictions, targets, exp_manager, split):
     save_path = exp_manager.get_plot_path(f'{split}_roc_curve')
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
-    print(f"  ✓ ROC curve saved: {save_path}")
+    success(f"ROC curve saved: {save_path}")
 
 
 def plot_pr_curve(predictions, targets, exp_manager, split):
@@ -270,7 +322,7 @@ def plot_pr_curve(predictions, targets, exp_manager, split):
     save_path = exp_manager.get_plot_path(f'{split}_pr_curve')
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
-    print(f"  ✓ PR curve saved: {save_path}")
+    success(f"PR curve saved: {save_path}")
 
 
 def plot_confusion_matrix(predictions, targets, exp_manager, split, threshold=0.5):
@@ -292,7 +344,7 @@ def plot_confusion_matrix(predictions, targets, exp_manager, split, threshold=0.
     save_path = exp_manager.get_plot_path(f'{split}_confusion_matrix')
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
-    print(f"  ✓ Confusion matrix saved: {save_path}")
+    success(f"Confusion matrix saved: {save_path}")
 
 
 def plot_calibration(predictions, targets, exp_manager, split, n_bins=10):
@@ -340,7 +392,7 @@ def plot_calibration(predictions, targets, exp_manager, split, n_bins=10):
     save_path = exp_manager.get_plot_path(f'{split}_calibration')
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
-    print(f"  ✓ Calibration plot saved: {save_path}")
+    success(f"Calibration plot saved: {save_path}")
 
 
 def plot_confidence_distribution(predictions, targets, confidences, exp_manager, split):
@@ -384,7 +436,7 @@ def plot_confidence_distribution(predictions, targets, confidences, exp_manager,
     save_path = exp_manager.get_plot_path(f'{split}_confidence_analysis')
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
-    print(f"  ✓ Confidence analysis saved: {save_path}")
+    success(f"Confidence analysis saved: {save_path}")
 
 
 def plot_prediction_distribution(predictions, targets, exp_manager, split):
@@ -406,7 +458,7 @@ def plot_prediction_distribution(predictions, targets, exp_manager, split):
     save_path = exp_manager.get_plot_path(f'{split}_prediction_distribution')
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
-    print(f"  ✓ Prediction distribution saved: {save_path}")
+    success(f"Prediction distribution saved: {save_path}")
 
 
 def save_detailed_results(predictions, targets, confidences, results, exp_manager, split):
@@ -432,44 +484,43 @@ def save_detailed_results(predictions, targets, confidences, results, exp_manage
     with open(results_path, 'w') as f:
         json.dump(results, f, indent=2)
     
-    print(f"\n✓ Detailed results saved: {results_path}")
+    success(f"Detailed results saved: {results_path}")
 
 
 def print_results_summary(results):
     """Print formatted results summary"""
     
-    print(f"\n{'='*60}")
-    print("EVALUATION RESULTS SUMMARY")
-    print(f"{'='*60}")
+    section("EVALUATION RESULTS SUMMARY")
     
-    print(f"\nClassification Metrics:")
-    print(f"  AUC-ROC:           {results['auc_roc']:.4f}")
-    print(f"  Average Precision: {results['average_precision']:.4f}")
-    print(f"  Accuracy:          {results['accuracy']:.4f}")
-    print(f"  Sensitivity:       {results['sensitivity']:.4f}")
-    print(f"  Specificity:       {results['specificity']:.4f}")
-    print(f"  Precision:         {results['precision']:.4f}")
-    print(f"  F1-Score:          {results['f1_score']:.4f}")
+    print(f"\n  {BOLD}Classification Metrics:{RESET}")
+    info("AUC-ROC", f"{results['auc_roc']:.4f}")
+    info("Average Precision", f"{results['average_precision']:.4f}")
+    info("Accuracy", f"{results['accuracy']:.4f}")
+    info("Sensitivity", f"{results['sensitivity']:.4f}")
+    info("Specificity", f"{results['specificity']:.4f}")
+    info("Precision", f"{results['precision']:.4f}")
+    info("F1-Score", f"{results['f1_score']:.4f}")
     
-    print(f"\nConfusion Matrix:")
-    print(f"  True Negatives:    {results['true_negatives']}")
-    print(f"  False Positives:   {results['false_positives']}")
-    print(f"  False Negatives:   {results['false_negatives']}")
-    print(f"  True Positives:    {results['true_positives']}")
+    print(f"\n  {BOLD}Confusion Matrix:{RESET}")
+    info("True Negatives", f"{results['true_negatives']}")
+    info("False Positives", f"{results['false_positives']}")
+    info("False Negatives", f"{results['false_negatives']}")
+    info("True Positives", f"{results['true_positives']}")
     
-    print(f"\nClinical Metrics:")
-    print(f"  FP per Scan:       {results['fp_per_scan']:.2f}")
-    print(f"  ECE (Calibration): {results['ece']:.4f}")
+    print(f"\n  {BOLD}Clinical Metrics:{RESET}")
+    info("FP per Scan", f"{results['fp_per_scan']:.2f}")
+    info("ECE (Calibration)", f"{results['ece']:.4f}")
     
-    print(f"\nConfidence Analysis:")
-    print(f"  Avg Conf (Correct):   {results['avg_confidence_correct']:.4f}")
-    print(f"  Avg Conf (Incorrect): {results['avg_confidence_incorrect']:.4f}")
-    
-    print(f"\n{'='*60}\n")
+    print(f"\n  {BOLD}Confidence Analysis:{RESET}")
+    info("Avg Conf (Correct)", f"{results['avg_confidence_correct']:.4f}")
+    info("Avg Conf (Incorrect)", f"{results['avg_confidence_incorrect']:.4f}")
+    print()
 
 
 if __name__ == '__main__':
     args = parse_args()
+    
+    banner(args.experiment)
     
     # Load experiment
     exp_manager = ExperimentManager(args.experiment)
@@ -478,11 +529,16 @@ if __name__ == '__main__':
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
     
-    # Load dataloaders
+    section("SETUP")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print("Creating model...")
+    info("Device", str(device))
+    info("Experiment", args.experiment)
+    info("Checkpoint", args.checkpoint)
+    info("Split", args.split)
+    
     model = create_model(config)
     model = model.to(device)
+    success("Model created")
     
     # Load model Weights
     if os.path.exists(args.checkpoint) and os.path.isfile(args.checkpoint):
@@ -493,9 +549,9 @@ if __name__ == '__main__':
     if os.path.exists(checkpoint_path):
         checkpoint = torch.load(checkpoint_path, map_location=device)
         model.load_state_dict(checkpoint['model_state_dict'])
-        print(f"Loaded checkpoint from {checkpoint_path}")
+        success(f"Loaded checkpoint from {checkpoint_path}")
     else:
-        print(f"Failed to find checkpoint at {checkpoint_path}")
+        print(f"  {RED}✗ Failed to find checkpoint at {checkpoint_path}{RESET}")
         sys.exit(1)
         
     print("Loading datasets...")

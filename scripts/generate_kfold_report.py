@@ -17,6 +17,55 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 
+# ─────────────────────────────────────────────────────────────
+# Display
+# ─────────────────────────────────────────────────────────────
+GREEN = "\033[92m"
+BLUE = "\033[94m"
+CYAN = "\033[96m"
+BOLD = "\033[1m"
+DIM = "\033[2m"
+RESET = "\033[0m"
+
+
+def banner():
+    print(f"""
+{BOLD}{CYAN}╔════════════════════════════════════════════════════════════════════╗
+║                                                                    ║
+║    ██████╗ ███╗   ██╗ ██████╗ ██████╗                              ║
+║   ██╔═══██╗████╗  ██║██╔════╝██╔═══██╗                             ║
+║   ██║   ██║██╔██╗ ██║██║     ██║   ██║                             ║
+║   ██║   ██║██║╚██╗██║██║     ██║   ██║                             ║
+║   ╚██████╔╝██║ ╚████║╚██████╗╚██████╔╝                             ║
+║    ╚═════╝ ╚═╝  ╚═══╝ ╚═════╝ ╚═════╝                              ║
+║   ██╗   ██╗██╗███████╗██╗ ██████╗ ███╗   ██╗    ██╗  ██╗           ║
+║   ██║   ██║██║██╔════╝██║██╔═══██╗████╗  ██║    ╚██╗██╔╝           ║
+║   ██║   ██║██║███████╗██║██║   ██║██╔██╗ ██║     ╚███╔╝            ║
+║   ╚██╗ ██╔╝██║╚════██║██║██║   ██║██║╚██╗██║     ██╔██╗            ║
+║    ╚████╔╝ ██║███████║██║╚██████╔╝██║ ╚████║    ██╔╝ ██╗           ║
+║     ╚═══╝  ╚═╝╚══════╝╚═╝ ╚═════╝ ╚═╝  ╚═══╝    ╚═╝  ╚═╝           ║
+║                                                                    ║
+║   Dual-Context Attention Network                                   ║
+║   K-Fold Final Report Generator                                    ║
+║                                                                    ║
+╚════════════════════════════════════════════════════════════════════╝{RESET}
+""")
+
+
+def section(title):
+    print(f"\n{BOLD}{BLUE}{'─' * 60}")
+    print(f"  {title}")
+    print(f"{'─' * 60}{RESET}")
+
+
+def info(label, value):
+    print(f"  {DIM}{label}:{RESET} {value}")
+
+
+def success(msg):
+    print(f"  {GREEN}✓ {msg}{RESET}")
+
+
 def generate_latex_table(original, optimized, output_path):
     """Generate LaTeX table for paper."""
     opt_thresh = optimized['optimal_threshold']['mean']
@@ -60,7 +109,7 @@ def generate_latex_table(original, optimized, output_path):
 
     with open(output_path, 'w') as f:
         f.write('\n'.join(lines))
-    print(f"✓ LaTeX table saved: {output_path}")
+    success(f"LaTeX table saved: {output_path}")
 
 
 def generate_comparison_plot(original, optimized, output_path):
@@ -111,7 +160,7 @@ def generate_comparison_plot(original, optimized, output_path):
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.close()
-    print(f"✓ Comparison plot saved: {output_path}")
+    success(f"Comparison plot saved: {output_path}")
 
 
 def main():
@@ -145,9 +194,11 @@ def main():
     report_dir = results_dir / 'final_report'
     report_dir.mkdir(parents=True, exist_ok=True)
 
-    print("\n" + "=" * 60)
-    print("GENERATING FINAL K-FOLD REPORT")
-    print("=" * 60 + "\n")
+    banner()
+    
+    section("LOADING DATA")
+
+    section("GENERATING OUTPUTS")
 
     generate_latex_table(original, optimized, report_dir / 'kfold_table.tex')
     generate_comparison_plot(original, optimized, report_dir / 'kfold_comparison.png')
@@ -165,11 +216,12 @@ def main():
     with open(report_dir / 'final_kfold_report.json', 'w') as f:
         json.dump(combined, f, indent=2)
 
-    print(f"\n✓ Final report saved to: {report_dir}")
-    print("  - kfold_table.tex (for paper)")
-    print("  - kfold_comparison.png (figure)")
-    print("  - final_kfold_report.json (complete results)")
-    print("\n" + "=" * 60 + "\n")
+    section("REPORT COMPLETE")
+    success(f"Saved to: {report_dir}")
+    info("kfold_table.tex", "LaTeX table for paper")
+    info("kfold_comparison.png", "Comparison figure")
+    info("final_kfold_report.json", "Complete results")
+    print()
 
 
 if __name__ == '__main__':

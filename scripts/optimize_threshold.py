@@ -18,6 +18,55 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 
+# ─────────────────────────────────────────────────────────────
+# Display
+# ─────────────────────────────────────────────────────────────
+GREEN = "\033[92m"
+BLUE = "\033[94m"
+CYAN = "\033[96m"
+BOLD = "\033[1m"
+DIM = "\033[2m"
+RESET = "\033[0m"
+
+
+def banner():
+    print(f"""
+{BOLD}{CYAN}╔════════════════════════════════════════════════════════════════════╗
+║                                                                    ║
+║    ██████╗ ███╗   ██╗ ██████╗ ██████╗                              ║
+║   ██╔═══██╗████╗  ██║██╔════╝██╔═══██╗                             ║
+║   ██║   ██║██╔██╗ ██║██║     ██║   ██║                             ║
+║   ██║   ██║██║╚██╗██║██║     ██║   ██║                             ║
+║   ╚██████╔╝██║ ╚████║╚██████╗╚██████╔╝                             ║
+║    ╚═════╝ ╚═╝  ╚═══╝ ╚═════╝ ╚═════╝                              ║
+║   ██╗   ██╗██╗███████╗██╗ ██████╗ ███╗   ██╗    ██╗  ██╗           ║
+║   ██║   ██║██║██╔════╝██║██╔═══██╗████╗  ██║    ╚██╗██╔╝           ║
+║   ██║   ██║██║███████╗██║██║   ██║██╔██╗ ██║     ╚███╔╝            ║
+║   ╚██╗ ██╔╝██║╚════██║██║██║   ██║██║╚██╗██║     ██╔██╗            ║
+║    ╚████╔╝ ██║███████║██║╚██████╔╝██║ ╚████║    ██╔╝ ██╗           ║
+║     ╚═══╝  ╚═╝╚══════╝╚═╝ ╚═════╝ ╚═╝  ╚═══╝    ╚═╝  ╚═╝           ║
+║                                                                    ║
+║   Dual-Context Attention Network                                   ║
+║   K-Fold Threshold Optimization                                    ║
+║                                                                    ║
+╚════════════════════════════════════════════════════════════════════╝{RESET}
+""")
+
+
+def section(title):
+    print(f"\n{BOLD}{BLUE}{'─' * 60}")
+    print(f"  {title}")
+    print(f"{'─' * 60}{RESET}")
+
+
+def info(label, value):
+    print(f"  {DIM}{label}:{RESET} {value}")
+
+
+def success(msg):
+    print(f"  {GREEN}✓ {msg}{RESET}")
+
+
 def load_fold_predictions(fold_dir):
     """Load predictions and targets from a fold."""
     # Check metrics/ subdirectory first (new layout), then root (legacy)
@@ -183,8 +232,8 @@ def analyze_all_folds(base_dir, output_dir):
         print("Make sure you've run train_kfold.py with prediction saving first.")
         return
 
-    print(f"\nFound {len(fold_dirs)} folds")
-    print("=" * 60)
+    banner()
+    section("LOADING FOLDS")
 
     all_fold_results = {}
 
@@ -226,9 +275,7 @@ def analyze_all_folds(base_dir, output_dir):
         return
 
     # Summary across all folds
-    print(f"\n{'=' * 60}")
-    print("SUMMARY ACROSS ALL FOLDS")
-    print(f"{'=' * 60}\n")
+    section("SUMMARY ACROSS ALL FOLDS")
 
     opt_thresholds = [r['optimal_threshold'] for r in all_fold_results.values()]
     summary = {
@@ -262,8 +309,8 @@ def analyze_all_folds(base_dir, output_dir):
     with open(summary_path, 'w') as f:
         json.dump(summary, f, indent=2)
 
-    print(f"\n✓ Summary saved: {summary_path}")
-    print(f"{'=' * 60}\n")
+    success(f"Summary saved: {summary_path}")
+    print()
 
 
 if __name__ == '__main__':

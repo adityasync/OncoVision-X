@@ -22,6 +22,57 @@ from src.training.trainer import Trainer
 from src.evaluation.evaluator import Evaluator
 
 
+# ─────────────────────────────────────────────────────────────
+# Display
+# ─────────────────────────────────────────────────────────────
+RED = "\033[91m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+BLUE = "\033[94m"
+CYAN = "\033[96m"
+BOLD = "\033[1m"
+DIM = "\033[2m"
+RESET = "\033[0m"
+
+
+def banner(experiment):
+    print(f"""
+{BOLD}{CYAN}╔════════════════════════════════════════════════════════════════════╗
+║                                                                    ║
+║    ██████╗ ███╗   ██╗ ██████╗ ██████╗                              ║
+║   ██╔═══██╗████╗  ██║██╔════╝██╔═══██╗                             ║
+║   ██║   ██║██╔██╗ ██║██║     ██║   ██║                             ║
+║   ██║   ██║██║╚██╗██║██║     ██║   ██║                             ║
+║   ╚██████╔╝██║ ╚████║╚██████╗╚██████╔╝                             ║
+║    ╚═════╝ ╚═╝  ╚═══╝ ╚═════╝ ╚═════╝                              ║
+║   ██╗   ██╗██╗███████╗██╗ ██████╗ ███╗   ██╗    ██╗  ██╗           ║
+║   ██║   ██║██║██╔════╝██║██╔═══██╗████╗  ██║    ╚██╗██╔╝           ║
+║   ██║   ██║██║███████╗██║██║   ██║██╔██╗ ██║     ╚███╔╝            ║
+║   ╚██╗ ██╔╝██║╚════██║██║██║   ██║██║╚██╗██║     ██╔██╗            ║
+║    ╚████╔╝ ██║███████║██║╚██████╔╝██║ ╚████║    ██╔╝ ██╗           ║
+║     ╚═══╝  ╚═╝╚══════╝╚═╝ ╚═════╝ ╚═╝  ╚═══╝    ╚═╝  ╚═╝           ║
+║                                                                    ║
+║   Dual-Context Attention Network                                   ║
+║   Experiment: {experiment:<49s}║
+║                                                                    ║
+╚════════════════════════════════════════════════════════════════════╝{RESET}
+""")
+
+
+def section(title):
+    print(f"\n{BOLD}{BLUE}{'─' * 60}")
+    print(f"  {title}")
+    print(f"{'─' * 60}{RESET}")
+
+
+def info(label, value):
+    print(f"  {DIM}{label}:{RESET} {value}")
+
+
+def success(msg):
+    print(f"  {GREEN}✓ {msg}{RESET}")
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Train experiment')
     
@@ -164,24 +215,27 @@ def train_experiment(args):
     # 3. Setup logging
     logger = setup_logging(config)
     
-    print(f"\n{'='*60}")
-    print(f"EXPERIMENT: {args.experiment}")
-    print(f"{'='*60}\n")
+    banner(args.experiment)
+    section("EXPERIMENT SETUP")
+    info("Experiment", args.experiment)
+    info("Model type", config.get('model', {}).get('type', 'dca_net'))
+    info("Config", args.config or f'configs/{args.experiment}.yaml')
+    info("Output dir", str(exp_manager.exp_dir))
     
     # 4. Create model
-    print("Creating model...")
+    section("MODEL")
     model = create_model(config)
     
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"  Total parameters: {total_params:,}")
-    print(f"  Trainable parameters: {trainable_params:,}")
+    info("Total parameters", f"{total_params:,}")
+    info("Trainable parameters", f"{trainable_params:,}")
     
     # 5. Create dataloaders
-    print("\nCreating dataloaders...")
+    section("DATA")
     train_loader, val_loader, test_loader = create_data_loaders(config)
-    print(f"  Train batches: {len(train_loader)}")
-    print(f"  Val batches: {len(val_loader)}")
+    info("Train batches", str(len(train_loader)))
+    info("Val batches", str(len(val_loader)))
     
     # 6. Evaluation Only Mode
     if args.evaluate_only:
@@ -191,9 +245,9 @@ def train_experiment(args):
         if os.path.exists(best_checkpoint_path):
             checkpoint = torch.load(best_checkpoint_path, map_location=device)
             model.load_state_dict(checkpoint['model_state_dict'])
-            print(f"Loaded checkpoint from {best_checkpoint_path}")
+            success(f"Loaded checkpoint from {best_checkpoint_path}")
         else:
-            print("No checkpoint found to evaluate!")
+            print(f"  {RED}✗ No checkpoint found to evaluate!{RESET}")
             return
             
         evaluator = Evaluator(model, test_loader, device=device, logger=logger)
@@ -201,26 +255,25 @@ def train_experiment(args):
         return
         
     # 7. Setup Training
-    print("\nSetting up training...")
+    section("TRAINING")
     trainer = Trainer(model, config, train_loader, val_loader, logger=logger)
     
     if args.resume:
         last_checkpoint_path = exp_manager.get_checkpoint_path('last')
         if os.path.exists(last_checkpoint_path):
             trainer.load_checkpoint(last_checkpoint_path)
-            print(f"Resumed from {last_checkpoint_path}")
+            success(f"Resumed from {last_checkpoint_path}")
             
     # 8. Training loop
-    print(f"\n{'='*60}")
-    print(f"STARTING TRAINING")
-    print(f"{'='*60}\n")
-    
     num_epochs = config.get('training', {}).get('num_epochs', 60)
+    info("Epochs", str(num_epochs))
+    info("Batch size", str(config.get('training', {}).get('batch_size', 64)))
+    info("Learning rate", str(config.get('training', {}).get('learning_rate', 0.0003)))
+    print()
+    
     trainer.train(num_epochs=num_epochs, dry_run=args.dry_run)
     
-    print(f"\n{'='*60}")
-    print(f"FINAL EVALUATION ON TEST SET")
-    print(f"{'='*60}\n")
+    section("FINAL EVALUATION ON TEST SET")
     
     # Load best checkpoint
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -246,10 +299,9 @@ def train_experiment(args):
         exp_manager.save_results(final_results)
         exp_manager.save_metadata()
     
-    print(f"\n{'='*60}")
-    print(f"EXPERIMENT COMPLETE!")
-    print(f"{'='*60}")
-    print(f"\nResults saved to: {exp_manager.exp_dir}")
+    section("EXPERIMENT COMPLETE")
+    success(f"Results saved to: {exp_manager.exp_dir}")
+    print()
 
 if __name__ == '__main__':
     args = parse_args()

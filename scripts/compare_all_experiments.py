@@ -16,6 +16,57 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.experiment_manager import ExperimentManager
 
 
+# ─────────────────────────────────────────────────────────────
+# Display
+# ─────────────────────────────────────────────────────────────
+RED = "\033[91m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+BLUE = "\033[94m"
+CYAN = "\033[96m"
+BOLD = "\033[1m"
+DIM = "\033[2m"
+RESET = "\033[0m"
+
+
+def banner():
+    print(f"""
+{BOLD}{CYAN}╔════════════════════════════════════════════════════════════════════╗
+║                                                                    ║
+║    ██████╗ ███╗   ██╗ ██████╗ ██████╗                              ║
+║   ██╔═══██╗████╗  ██║██╔════╝██╔═══██╗                             ║
+║   ██║   ██║██╔██╗ ██║██║     ██║   ██║                             ║
+║   ██║   ██║██║╚██╗██║██║     ██║   ██║                             ║
+║   ╚██████╔╝██║ ╚████║╚██████╗╚██████╔╝                             ║
+║    ╚═════╝ ╚═╝  ╚═══╝ ╚═════╝ ╚═════╝                              ║
+║   ██╗   ██╗██╗███████╗██╗ ██████╗ ███╗   ██╗    ██╗  ██╗           ║
+║   ██║   ██║██║██╔════╝██║██╔═══██╗████╗  ██║    ╚██╗██╔╝           ║
+║   ██║   ██║██║███████╗██║██║   ██║██╔██╗ ██║     ╚███╔╝            ║
+║   ╚██╗ ██╔╝██║╚════██║██║██║   ██║██║╚██╗██║     ██╔██╗            ║
+║    ╚████╔╝ ██║███████║██║╚██████╔╝██║ ╚████║    ██╔╝ ██╗           ║
+║     ╚═══╝  ╚═╝╚══════╝╚═╝ ╚═════╝ ╚═╝  ╚═══╝    ╚═╝  ╚═╝           ║
+║                                                                    ║
+║   Dual-Context Attention Network                                   ║
+║   Experiment Comparison & Analysis                                 ║
+║                                                                    ║
+╚════════════════════════════════════════════════════════════════════╝{RESET}
+""")
+
+
+def section(title):
+    print(f"\n{BOLD}{BLUE}{'─' * 60}")
+    print(f"  {title}")
+    print(f"{'─' * 60}{RESET}")
+
+
+def info(label, value):
+    print(f"  {DIM}{label}:{RESET} {value}")
+
+
+def success(msg):
+    print(f"  {GREEN}✓ {msg}{RESET}")
+
+
 def load_all_experiment_results(base_dir='experiments'):
     """Load results from all experiments"""
     
@@ -41,9 +92,9 @@ def load_all_experiment_results(base_dir='experiments'):
                 'display_name': format_experiment_name(exp_name),
                 'results': results['test_results']
             })
-            print(f"✓ Loaded: {exp_name}")
+            success(f"Loaded: {exp_name}")
         else:
-            print(f"✗ Missing: {exp_name}")
+            print(f"  {RED}✗ Missing: {exp_name}{RESET}")
     
     return experiments_data
 
@@ -85,20 +136,19 @@ def create_comparison_table(experiments_data, output_dir):
     # Save as CSV
     csv_path = Path(output_dir) / 'all_experiments_comparison.csv'
     df.to_csv(csv_path, index=False)
-    print(f"✓ Comparison table saved: {csv_path}")
+    success(f"Comparison table saved: {csv_path}")
     
     # Save as LaTeX
     latex_path = Path(output_dir) / 'comparison_table.tex'
     with open(latex_path, 'w') as f:
         f.write(df.to_latex(index=False, escape=False))
-    print(f"✓ LaTeX table saved: {latex_path}")
+    success(f"LaTeX table saved: {latex_path}")
     
     # Print to console
-    print("\n" + "="*80)
-    print("COMPARISON TABLE")
-    print("="*80)
+    section("COMPARISON TABLE")
+    print()
     print(df.to_string(index=False))
-    print("="*80 + "\n")
+    print()
     
     return df
 
@@ -182,7 +232,7 @@ def create_comparison_plots(experiments_data, output_dir):
     plot_path = Path(output_dir) / 'comparison_plots.png'
     plt.savefig(plot_path, dpi=300, bbox_inches='tight')
     plt.close()
-    print(f"✓ Comparison plots saved: {plot_path}")
+    success(f"Comparison plots saved: {plot_path}")
 
 
 def create_ablation_analysis(experiments_data, output_dir):
@@ -210,31 +260,30 @@ def create_ablation_analysis(experiments_data, output_dir):
     # Save
     csv_path = Path(output_dir) / 'ablation_analysis.csv'
     df.to_csv(csv_path, index=False)
-    print(f"✓ Ablation analysis saved: {csv_path}")
+    success(f"Ablation analysis saved: {csv_path}")
     
-    print("\n" + "="*60)
-    print("ABLATION STUDY ANALYSIS")
-    print("="*60)
-    print(f"Full Model AUC: {full_auc:.4f}\n")
+    section("ABLATION STUDY ANALYSIS")
+    info("Full Model AUC", f"{full_auc:.4f}")
+    print()
     print(df.to_string(index=False))
-    print("="*60 + "\n")
+    print()
 
 
 def main():
     """Main comparison function"""
     
-    print("\n" + "="*60)
-    print("COMPARING ALL EXPERIMENTS")
-    print("="*60 + "\n")
+    banner()
+    
+    section("LOADING EXPERIMENTS")
     
     # Load all experiments
     experiments_data = load_all_experiment_results()
     
     if len(experiments_data) == 0:
-        print("No experiment results found!")
+        print(f"  {RED}✗ No experiment results found!{RESET}")
         return
     
-    print(f"\nLoaded {len(experiments_data)} experiments\n")
+    info("Experiments loaded", str(len(experiments_data)))
     
     # Create output directory
     output_dir = Path('experiments/comparison_results')
@@ -249,10 +298,9 @@ def main():
     # Ablation analysis
     create_ablation_analysis(experiments_data, output_dir)
     
-    print("\n" + "="*60)
-    print("COMPARISON COMPLETE!")
-    print(f"Results saved to: {output_dir}")
-    print("="*60 + "\n")
+    section("COMPARISON COMPLETE")
+    success(f"Results saved to: {output_dir}")
+    print()
 
 
 if __name__ == '__main__':
