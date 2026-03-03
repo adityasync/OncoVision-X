@@ -27,6 +27,31 @@ class ResNet3D18(nn.Module):
         # input shape: (B, 1, D, H, W)
         return self.model(nodule_patch)
 
+    @torch.no_grad()
+    def predict_with_uncertainty(self, nodule_patch, context_patch=None, mc_passes=5):
+        """Monte Carlo Dropout uncertainty estimation.
+        
+        Args:
+            nodule_patch: (B, 1, D, H, W)
+            context_patch: (B, 1, D, H, W) or None
+            mc_passes: int, number of forward passes
+        """
+        self.train()  # Enable dropout
+        
+        preds = []
+        for _ in range(mc_passes):
+            logits = self.forward(nodule_patch, context_patch)
+            prob = torch.sigmoid(logits.squeeze(-1))
+            preds.append(prob)
+            
+        preds = torch.stack(preds, dim=0)
+        mean_prob = preds.mean(dim=0)
+        variance = preds.var(dim=0)
+        confidence = 1.0 - (variance / 0.25).clamp(0, 1)
+        
+        self.eval()
+        return mean_prob, confidence
+
 class ResNet2D18SliceLevel(nn.Module):
     def __init__(self, num_classes=1):
         super().__init__()
@@ -73,6 +98,31 @@ class ResNet2D18SliceLevel(nn.Module):
         
         # Classification
         return self.head(pooled_feats)
+
+    @torch.no_grad()
+    def predict_with_uncertainty(self, nodule_patch, context_patch=None, mc_passes=5):
+        """Monte Carlo Dropout uncertainty estimation.
+        
+        Args:
+            nodule_patch: (B, 1, D, H, W)
+            context_patch: (B, 1, D, H, W) or None
+            mc_passes: int, number of forward passes
+        """
+        self.train()  # Enable dropout
+        
+        preds = []
+        for _ in range(mc_passes):
+            logits = self.forward(nodule_patch, context_patch)
+            prob = torch.sigmoid(logits.squeeze(-1))
+            preds.append(prob)
+            
+        preds = torch.stack(preds, dim=0)
+        mean_prob = preds.mean(dim=0)
+        variance = preds.var(dim=0)
+        confidence = 1.0 - (variance / 0.25).clamp(0, 1)
+        
+        self.eval()
+        return mean_prob, confidence
 
 def get_baseline_model(model_name):
     if model_name == 'resnet3d18':

@@ -241,6 +241,15 @@ class Evaluator:
         # ── 5. Uncertainty ──
         mean_probs = None
         confidences = None
+        
+        raw_model = self.model
+        if isinstance(raw_model, nn.DataParallel):
+            raw_model = raw_model.module
+            
+        if run_uncertainty and not hasattr(raw_model, 'predict_with_uncertainty'):
+            self.logger.warning("Model lacks 'predict_with_uncertainty' method. Skipping uncertainty estimation.")
+            run_uncertainty = False
+
         if run_uncertainty:
             self.logger.info("5. Running uncertainty estimation...")
             mean_probs, confidences, unc_labels = self.collect_uncertainty()
