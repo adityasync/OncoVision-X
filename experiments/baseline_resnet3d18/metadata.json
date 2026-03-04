@@ -1,0 +1,112 @@
+{
+  "experiment_name": "baseline_resnet3d18",
+  "timestamp": "20260303_154956",
+  "status": "completed",
+  "config": {
+    "experiment_name": "baseline_resnet3d18",
+    "description": "Standard 3D ResNet-18 baseline",
+    "model": {
+      "type": "resnet3d18",
+      "input_size": 64,
+      "num_classes": 1
+    },
+    "training": {
+      "num_epochs": 60,
+      "batch_size": 16,
+      "learning_rate": 0.0001,
+      "weight_decay": 1e-05
+    },
+    "data": {
+      "train_subsets": [
+        0,
+        1,
+        2
+      ],
+      "val_subsets": [
+        3
+      ],
+      "test_subsets": [
+        4
+      ],
+      "num_workers": 16
+    },
+    "logging": {
+      "log_dir": "experiments/baseline_resnet3d18/logs",
+      "checkpoint_dir": "experiments/baseline_resnet3d18/checkpoints"
+    },
+    "paths": {
+      "log_dir": "experiments/baseline_resnet3d18/logs",
+      "model_save_dir": "experiments/baseline_resnet3d18/checkpoints"
+    }
+  },
+  "results": {
+    "experiment": "baseline_resnet3d18",
+    "best_epoch": 17,
+    "best_val_auc": 0.0,
+    "test_results": {
+      "auc_roc": 0.9964398235664776,
+      "auc_pr": 0.952777043377927,
+      "f1_score": 0.8434504792332268,
+      "accuracy": 0.9778079710144928,
+      "sensitivity": 0.9565217391304348,
+      "specificity": 0.9792270531400966,
+      "precision": 0.7542857142857143,
+      "true_positives": 132,
+      "false_positives": 43,
+      "true_negatives": 2027,
+      "false_negatives": 6,
+      "threshold": 0.5,
+      "sensitivity_at_0.5fp": 0.18115942028985507,
+      "sensitivity_at_1fp": 0.18115942028985507,
+      "sensitivity_at_2fp": 0.6086956521739131,
+      "sensitivity_at_4fp": 0.7536231884057971,
+      "sensitivity_at_8fp": 0.8115942028985508,
+      "ece": 0.4237179859959777,
+      "uncertainty": {
+        "mean_confidence": 1.0,
+        "mean_confidence_correct": 1.0,
+        "mean_confidence_incorrect": 1.0,
+        "uncertain_cases_ratio": 0.0,
+        "uncertain_cases_count": 0,
+        "misclassified_flagged_by_uncertainty": 0.0
+      }
+    },
+    "config": {
+      "experiment_name": "baseline_resnet3d18",
+      "description": "Standard 3D ResNet-18 baseline",
+      "model": {
+        "type": "resnet3d18",
+        "input_size": 64,
+        "num_classes": 1
+      },
+      "training": {
+        "num_epochs": 60,
+        "batch_size": 16,
+        "learning_rate": 0.0001,
+        "weight_decay": 1e-05
+      },
+      "data": {
+        "train_subsets": [
+          0,
+          1,
+          2
+        ],
+        "val_subsets": [
+          3
+        ],
+        "test_subsets": [
+          4
+        ],
+        "num_workers": 16
+      },
+      "logging": {
+        "log_dir": "experiments/baseline_resnet3d18/logs",
+        "checkpoint_dir": "experiments/baseline_resnet3d18/checkpoints"
+      },
+      "paths": {
+        "log_dir": "experiments/baseline_resnet3d18/logs",
+        "model_save_dir": "experiments/baseline_resnet3d18/checkpoints"
+      }
+    }
+  }
+}

@@ -1,0 +1,43 @@
+============================================================
+DCA-NET EVALUATION REPORT
+Lung Nodule Classification — LUNA16 Dataset
+============================================================
+
+CLASSIFICATION METRICS
+----------------------------------------
+  AUC-ROC:         0.6443
+  AUC-PR:          0.0968
+  Sensitivity:     0.6304
+  Specificity:     0.5952
+  Precision:       0.0941
+  F1-Score:        0.1637
+  Accuracy:        0.5974
+
+CONFUSION MATRIX
+----------------------------------------
+  True Positives:  87
+  False Positives: 838
+  True Negatives:  1232
+  False Negatives: 51
+
+FROC ANALYSIS
+----------------------------------------
+  Sensitivity @ 0.5 FP/scan: 0.0000
+  Sensitivity @ 1 FP/scan: 0.0000
+  Sensitivity @ 2 FP/scan: 0.0000
+  Sensitivity @ 4 FP/scan: 0.0000
+  Sensitivity @ 8 FP/scan: 0.0000
+
+CALIBRATION
+----------------------------------------
+  ECE:             0.4455
+
+UNCERTAINTY ANALYSIS
+----------------------------------------
+  Mean Confidence (all):       0.9912
+  Mean Confidence (correct):   0.9930
+  Mean Confidence (incorrect): 0.9896
+  Uncertain cases (<0.7):      0 (0.0%)
+  Misclassified flagged:       0.0%
+
+============================================================

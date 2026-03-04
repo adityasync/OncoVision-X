@@ -1,0 +1,27 @@
+data:
+  num_workers: 16
+  test_subsets:
+  - 4
+  train_subsets:
+  - 0
+  - 1
+  - 2
+  val_subsets:
+  - 3
+description: Standard 2D ResNet-18 (slice-level) baseline
+experiment_name: baseline_resnet2d18
+logging:
+  checkpoint_dir: experiments/baseline_resnet2d18/checkpoints
+  log_dir: experiments/baseline_resnet2d18/logs
+model:
+  input_size: 64
+  num_classes: 1
+  type: resnet2d18
+paths:
+  log_dir: experiments/baseline_resnet2d18/logs
+  model_save_dir: experiments/baseline_resnet2d18/checkpoints
+training:
+  batch_size: 16
+  learning_rate: 0.0001
+  num_epochs: 60
+  weight_decay: 1.0e-05

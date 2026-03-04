@@ -1,0 +1,112 @@
+{
+  "experiment_name": "baseline_resnet2d18",
+  "timestamp": "20260303_184157",
+  "status": "completed",
+  "config": {
+    "experiment_name": "baseline_resnet2d18",
+    "description": "Standard 2D ResNet-18 (slice-level) baseline",
+    "model": {
+      "type": "resnet2d18",
+      "input_size": 64,
+      "num_classes": 1
+    },
+    "training": {
+      "num_epochs": 60,
+      "batch_size": 16,
+      "learning_rate": 0.0001,
+      "weight_decay": 1e-05
+    },
+    "data": {
+      "train_subsets": [
+        0,
+        1,
+        2
+      ],
+      "val_subsets": [
+        3
+      ],
+      "test_subsets": [
+        4
+      ],
+      "num_workers": 16
+    },
+    "logging": {
+      "log_dir": "experiments/baseline_resnet2d18/logs",
+      "checkpoint_dir": "experiments/baseline_resnet2d18/checkpoints"
+    },
+    "paths": {
+      "log_dir": "experiments/baseline_resnet2d18/logs",
+      "model_save_dir": "experiments/baseline_resnet2d18/checkpoints"
+    }
+  },
+  "results": {
+    "experiment": "baseline_resnet2d18",
+    "best_epoch": 42,
+    "best_val_auc": 0.0,
+    "test_results": {
+      "auc_roc": 0.9862633900441085,
+      "auc_pr": 0.8861571407160562,
+      "f1_score": 0.7236467236467237,
+      "accuracy": 0.9560688405797102,
+      "sensitivity": 0.9202898550724637,
+      "specificity": 0.9584541062801932,
+      "precision": 0.596244131455399,
+      "true_positives": 127,
+      "false_positives": 86,
+      "true_negatives": 1984,
+      "false_negatives": 11,
+      "threshold": 0.5,
+      "sensitivity_at_0.5fp": 0.10144927536231885,
+      "sensitivity_at_1fp": 0.10144927536231885,
+      "sensitivity_at_2fp": 0.2971014492753623,
+      "sensitivity_at_4fp": 0.5217391304347826,
+      "sensitivity_at_8fp": 0.7028985507246377,
+      "ece": 0.4254753737291996,
+      "uncertainty": {
+        "mean_confidence": 0.9994142055511475,
+        "mean_confidence_correct": 0.9994369745254517,
+        "mean_confidence_incorrect": 0.9989852905273438,
+        "uncertain_cases_ratio": 0.0,
+        "uncertain_cases_count": 0,
+        "misclassified_flagged_by_uncertainty": 0.0
+      }
+    },
+    "config": {
+      "experiment_name": "baseline_resnet2d18",
+      "description": "Standard 2D ResNet-18 (slice-level) baseline",
+      "model": {
+        "type": "resnet2d18",
+        "input_size": 64,
+        "num_classes": 1
+      },
+      "training": {
+        "num_epochs": 60,
+        "batch_size": 16,
+        "learning_rate": 0.0001,
+        "weight_decay": 1e-05
+      },
+      "data": {
+        "train_subsets": [
+          0,
+          1,
+          2
+        ],
+        "val_subsets": [
+          3
+        ],
+        "test_subsets": [
+          4
+        ],
+        "num_workers": 16
+      },
+      "logging": {
+        "log_dir": "experiments/baseline_resnet2d18/logs",
+        "checkpoint_dir": "experiments/baseline_resnet2d18/checkpoints"
+      },
+      "paths": {
+        "log_dir": "experiments/baseline_resnet2d18/logs",
+        "model_save_dir": "experiments/baseline_resnet2d18/checkpoints"
+      }
+    }
+  }
+}

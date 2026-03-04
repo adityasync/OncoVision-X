@@ -1,0 +1,175 @@
+{
+  "num_folds": 5,
+  "config": {
+    "model": {
+      "name": "OncoVisionX",
+      "nodule_patch_size": 64,
+      "context_patch_size": 48,
+      "backbone": "efficientnet_b0",
+      "num_classes": 1,
+      "nodule_feature_dim": 512,
+      "context_feature_dim": 256,
+      "fusion_dim": 256,
+      "num_attention_heads": 4,
+      "dropout": 0.5,
+      "prediction_dropout": 0.3,
+      "mc_dropout_passes": 10,
+      "slice_neighbors": 2
+    },
+    "training": {
+      "batch_size": 48,
+      "num_epochs": 150,
+      "learning_rate": 0.0003,
+      "weight_decay": 1e-05,
+      "warmup_epochs": 3,
+      "curriculum": {
+        "stage1_epochs": 40,
+        "stage2_epochs": 40,
+        "stage3_epochs": 70
+      },
+      "optimizer": "AdamW",
+      "scheduler": "CosineAnnealingWarmRestarts",
+      "scheduler_T0": 15,
+      "scheduler_Tmult": 2,
+      "use_amp": false,
+      "gradient_clip": 1.0,
+      "gradient_accumulation_steps": 1,
+      "use_data_parallel": false,
+      "device_ids": [
+        0
+      ],
+      "loss_weights": {
+        "bce": 0.4,
+        "focal": 0.4,
+        "uncertainty": 0.2
+      },
+      "focal_gamma": 2.0,
+      "focal_alpha": 0.9375,
+      "label_smoothing": 0.1,
+      "early_stopping_patience": 35
+    },
+    "data": {
+      "data_dir": "data",
+      "preprocessed_dir": "preprocessed_data",
+      "num_workers": 8,
+      "pin_memory": true,
+      "prefetch_factor": 4,
+      "persistent_workers": true,
+      "positive_negative_ratio": 15,
+      "augmentation": {
+        "enabled": true,
+        "rotation": true,
+        "flip": true,
+        "noise": true,
+        "noise_std": 0.05,
+        "intensity_shift": 0.1
+      },
+      "train_subsets": [
+        0,
+        1,
+        2
+      ],
+      "val_subsets": [
+        3
+      ],
+      "test_subsets": [
+        4
+      ]
+    },
+    "logging": {
+      "use_wandb": false,
+      "wandb_project": "oncovision-x",
+      "wandb_entity": "your_username",
+      "use_tensorboard": true,
+      "log_interval": 10,
+      "save_interval": 5,
+      "checkpoint_dir": "results/checkpoints",
+      "log_dir": "logs"
+    },
+    "paths": {
+      "data_root": "data",
+      "output_root": "results",
+      "model_save_dir": "results/checkpoints",
+      "log_dir": "logs",
+      "figures_dir": "results/figures"
+    }
+  },
+  "fold_metrics": {
+    "fold_0": {
+      "auc_roc": 0.9688691475755018,
+      "auc_pr": 0.3624202089214309,
+      "precision": 0.03166838311019567,
+      "recall": 0.8913043478260869,
+      "f1": 0.061163600198906015,
+      "sensitivity": 0.8913043478260869,
+      "specificity": 0.9247348409045427,
+      "accuracy": 0.9246427716133152
+    },
+    "fold_1": {
+      "auc_roc": 0.9488977918900532,
+      "auc_pr": 0.3938575632314919,
+      "precision": 0.05226071638285379,
+      "recall": 0.7807017543859649,
+      "f1": 0.09796367638965328,
+      "sensitivity": 0.7807017543859649,
+      "specificity": 0.9691076828848142,
+      "accuracy": 0.9686974789915966
+    },
+    "fold_2": {
+      "auc_roc": 0.9558291197099384,
+      "auc_pr": 0.3464344077962652,
+      "precision": 0.042360608254887765,
+      "recall": 0.8540145985401459,
+      "f1": 0.08071748878923767,
+      "sensitivity": 0.8540145985401459,
+      "specificity": 0.945091445060306,
+      "accuracy": 0.9448331539289558
+    },
+    "fold_3": {
+      "auc_roc": 0.9535670656968895,
+      "auc_pr": 0.41663548123574307,
+      "precision": 0.03217821782178218,
+      "recall": 0.8602941176470589,
+      "f1": 0.06203605514316013,
+      "sensitivity": 0.8602941176470589,
+      "specificity": 0.9298319076389304,
+      "accuracy": 0.9296438443335255
+    },
+    "fold_4": {
+      "auc_roc": 0.6098128899724563,
+      "auc_pr": 0.004107466453955171,
+      "precision": 0.003284439965662673,
+      "recall": 0.7272727272727273,
+      "f1": 0.0065393475514602065,
+      "sensitivity": 0.7272727272727273,
+      "specificity": 0.4608535895986433,
+      "accuracy": 0.4615028296376855
+    }
+  },
+  "summary": {
+    "auc_roc": {
+      "mean": 0.8873952029689679,
+      "std": 0.13894922019186065
+    },
+    "auc_pr": {
+      "mean": 0.3046910255277772,
+      "std": 0.15225496850600168
+    },
+    "sensitivity": {
+      "mean": 0.8227175091343968,
+      "std": 0.059951136412927646
+    },
+    "specificity": {
+      "mean": 0.8459238932174473,
+      "std": 0.1931524312370372
+    },
+    "f1": {
+      "mean": 0.061684033614483456,
+      "std": 0.03072398433429298
+    },
+    "accuracy": {
+      "mean": 0.8458640157010159,
+      "std": 0.19279088331471067
+    }
+  }
+}

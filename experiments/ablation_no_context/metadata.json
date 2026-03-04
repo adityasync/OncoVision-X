@@ -1,0 +1,116 @@
+{
+  "experiment_name": "ablation_no_context",
+  "timestamp": "20260303_023800",
+  "status": "completed",
+  "config": {
+    "experiment_name": "ablation_no_context",
+    "description": "DCA-Net without 3D context stream",
+    "model": {
+      "type": "dca_net",
+      "ablation": "no_context",
+      "nodule_patch_size": 64,
+      "context_patch_size": 48,
+      "backbone": "efficientnet_b0"
+    },
+    "training": {
+      "num_epochs": 60,
+      "batch_size": 32,
+      "learning_rate": 0.0003,
+      "weight_decay": 1e-05
+    },
+    "data": {
+      "train_subsets": [
+        0,
+        1,
+        2
+      ],
+      "val_subsets": [
+        3
+      ],
+      "test_subsets": [
+        4
+      ],
+      "num_workers": 16
+    },
+    "logging": {
+      "log_dir": "experiments/ablation_no_context/logs",
+      "checkpoint_dir": "experiments/ablation_no_context/checkpoints"
+    },
+    "paths": {
+      "log_dir": "experiments/ablation_no_context/logs",
+      "model_save_dir": "experiments/ablation_no_context/checkpoints"
+    }
+  },
+  "results": {
+    "experiment": "ablation_no_context",
+    "best_epoch": 56,
+    "best_val_auc": 0.0,
+    "test_results": {
+      "auc_roc": 0.6718546523839529,
+      "auc_pr": 0.1381943465488671,
+      "f1_score": 0.19761499148211242,
+      "accuracy": 0.7866847826086957,
+      "sensitivity": 0.42028985507246375,
+      "specificity": 0.8111111111111111,
+      "precision": 0.1291759465478842,
+      "true_positives": 58,
+      "false_positives": 391,
+      "true_negatives": 1679,
+      "false_negatives": 80,
+      "threshold": 0.5,
+      "sensitivity_at_0.5fp": 0.0,
+      "sensitivity_at_1fp": 0.0,
+      "sensitivity_at_2fp": 0.0,
+      "sensitivity_at_4fp": 0.0,
+      "sensitivity_at_8fp": 0.014492753623188406,
+      "ece": 0.44811807672722614,
+      "uncertainty": {
+        "mean_confidence": 0.9899054169654846,
+        "mean_confidence_correct": 0.9903542399406433,
+        "mean_confidence_incorrect": 0.989734947681427,
+        "uncertain_cases_ratio": 0.0,
+        "uncertain_cases_count": 0,
+        "misclassified_flagged_by_uncertainty": 0.0
+      }
+    },
+    "config": {
+      "experiment_name": "ablation_no_context",
+      "description": "DCA-Net without 3D context stream",
+      "model": {
+        "type": "dca_net",
+        "ablation": "no_context",
+        "nodule_patch_size": 64,
+        "context_patch_size": 48,
+        "backbone": "efficientnet_b0"
+      },
+      "training": {
+        "num_epochs": 60,
+        "batch_size": 32,
+        "learning_rate": 0.0003,
+        "weight_decay": 1e-05
+      },
+      "data": {
+        "train_subsets": [
+          0,
+          1,
+          2
+        ],
+        "val_subsets": [
+          3
+        ],
+        "test_subsets": [
+          4
+        ],
+        "num_workers": 16
+      },
+      "logging": {
+        "log_dir": "experiments/ablation_no_context/logs",
+        "checkpoint_dir": "experiments/ablation_no_context/checkpoints"
+      },
+      "paths": {
+        "log_dir": "experiments/ablation_no_context/logs",
+        "model_save_dir": "experiments/ablation_no_context/checkpoints"
+      }
+    }
+  }
+}

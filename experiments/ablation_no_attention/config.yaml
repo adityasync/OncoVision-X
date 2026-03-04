@@ -1,0 +1,29 @@
+data:
+  num_workers: 16
+  test_subsets:
+  - 4
+  train_subsets:
+  - 0
+  - 1
+  - 2
+  val_subsets:
+  - 3
+description: DCA-Net without cross-slice attention
+experiment_name: ablation_no_attention
+logging:
+  checkpoint_dir: experiments/ablation_no_attention/checkpoints
+  log_dir: experiments/ablation_no_attention/logs
+model:
+  ablation: no_attention
+  backbone: efficientnet_b0
+  context_patch_size: 48
+  nodule_patch_size: 64
+  type: dca_net
+paths:
+  log_dir: experiments/ablation_no_attention/logs
+  model_save_dir: experiments/ablation_no_attention/checkpoints
+training:
+  batch_size: 32
+  learning_rate: 0.0003
+  num_epochs: 60
+  weight_decay: 1.0e-05

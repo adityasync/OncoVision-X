@@ -1,0 +1,116 @@
+{
+  "experiment_name": "ablation_no_curriculum",
+  "timestamp": "20260303_043648",
+  "status": "completed",
+  "config": {
+    "experiment_name": "ablation_no_curriculum",
+    "description": "DCA-Net without progressive curriculum learning",
+    "model": {
+      "type": "dca_net",
+      "ablation": "no_curriculum",
+      "nodule_patch_size": 64,
+      "context_patch_size": 48,
+      "backbone": "efficientnet_b0"
+    },
+    "training": {
+      "num_epochs": 60,
+      "batch_size": 32,
+      "learning_rate": 0.0003,
+      "weight_decay": 1e-05
+    },
+    "data": {
+      "train_subsets": [
+        0,
+        1,
+        2
+      ],
+      "val_subsets": [
+        3
+      ],
+      "test_subsets": [
+        4
+      ],
+      "num_workers": 16
+    },
+    "logging": {
+      "log_dir": "experiments/ablation_no_curriculum/logs",
+      "checkpoint_dir": "experiments/ablation_no_curriculum/checkpoints"
+    },
+    "paths": {
+      "log_dir": "experiments/ablation_no_curriculum/logs",
+      "model_save_dir": "experiments/ablation_no_curriculum/checkpoints"
+    }
+  },
+  "results": {
+    "experiment": "ablation_no_curriculum",
+    "best_epoch": 40,
+    "best_val_auc": 0.0,
+    "test_results": {
+      "auc_roc": 0.6986102359448296,
+      "auc_pr": 0.11728949176888923,
+      "f1_score": 0.20601851851851852,
+      "accuracy": 0.6893115942028986,
+      "sensitivity": 0.644927536231884,
+      "specificity": 0.6922705314009662,
+      "precision": 0.12258953168044077,
+      "true_positives": 89,
+      "false_positives": 637,
+      "true_negatives": 1433,
+      "false_negatives": 49,
+      "threshold": 0.5,
+      "sensitivity_at_0.5fp": 0.0,
+      "sensitivity_at_1fp": 0.0,
+      "sensitivity_at_2fp": 0.0,
+      "sensitivity_at_4fp": 0.0,
+      "sensitivity_at_8fp": 0.0,
+      "ece": 0.4592469138349744,
+      "uncertainty": {
+        "mean_confidence": 0.9907692074775696,
+        "mean_confidence_correct": 0.9925669431686401,
+        "mean_confidence_incorrect": 0.9886982440948486,
+        "uncertain_cases_ratio": 0.0,
+        "uncertain_cases_count": 0,
+        "misclassified_flagged_by_uncertainty": 0.0
+      }
+    },
+    "config": {
+      "experiment_name": "ablation_no_curriculum",
+      "description": "DCA-Net without progressive curriculum learning",
+      "model": {
+        "type": "dca_net",
+        "ablation": "no_curriculum",
+        "nodule_patch_size": 64,
+        "context_patch_size": 48,
+        "backbone": "efficientnet_b0"
+      },
+      "training": {
+        "num_epochs": 60,
+        "batch_size": 32,
+        "learning_rate": 0.0003,
+        "weight_decay": 1e-05
+      },
+      "data": {
+        "train_subsets": [
+          0,
+          1,
+          2
+        ],
+        "val_subsets": [
+          3
+        ],
+        "test_subsets": [
+          4
+        ],
+        "num_workers": 16
+      },
+      "logging": {
+        "log_dir": "experiments/ablation_no_curriculum/logs",
+        "checkpoint_dir": "experiments/ablation_no_curriculum/checkpoints"
+      },
+      "paths": {
+        "log_dir": "experiments/ablation_no_curriculum/logs",
+        "model_save_dir": "experiments/ablation_no_curriculum/checkpoints"
+      }
+    }
+  }
+}
