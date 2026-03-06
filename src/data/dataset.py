@@ -24,10 +24,29 @@ class LunaDataset(Dataset):
         aug_config: Augmentation configuration dict
     """
 
-    def __init__(self, csv_path, augment=False, aug_config=None):
+    def __init__(self, csv_path, augment=False, aug_config=None, curriculum_stage=None):
         self.metadata = pd.read_csv(csv_path)
         self.augment = augment
         self.aug_config = aug_config or {}
+        
+        # Apply curriculum filtering
+        if curriculum_stage is not None and 'is_hard_negative' in self.metadata.columns:
+            original_len = len(self.metadata)
+            if curriculum_stage == 1:
+                # Stage 1: Easy samples only — positives + non-hard negatives
+                self.metadata = self.metadata[
+                    (self.metadata['label'] == 1) |
+                    (self.metadata['is_hard_negative'] == False)
+                ].reset_index(drop=True)
+            elif curriculum_stage == 2:
+                # Stage 2: All samples (same as stage 3 for our data)
+                pass  # Use all samples
+            # Stage 3 or None: use all samples
+            filtered_len = len(self.metadata)
+            if filtered_len != original_len:
+                pos = (self.metadata['label'] == 1).sum()
+                neg = filtered_len - pos
+                print(f"  Curriculum stage {curriculum_stage}: {original_len} → {filtered_len} samples ({pos} pos, {neg} neg)")
         
         # Verify a sample exists
         if len(self.metadata) > 0:
@@ -104,11 +123,12 @@ class LunaDataset(Dataset):
         return nodule, context
 
 
-def create_data_loaders(config):
+def create_data_loaders(config, curriculum_stage=None):
     """Create train, validation, and test DataLoaders from config.
     
     Args:
         config: Full training configuration dict
+        curriculum_stage: Optional curriculum stage (1, 2, or 3) for train set filtering
         
     Returns:
         train_loader, val_loader, test_loader
@@ -133,7 +153,7 @@ def create_data_loaders(config):
 
     train_dataset = LunaDataset(
         train_csv, augment=aug_config.get('enabled', True),
-        aug_config=aug_config
+        aug_config=aug_config, curriculum_stage=curriculum_stage
     )
     val_dataset = LunaDataset(val_csv, augment=False)
     test_dataset = LunaDataset(test_csv, augment=False)

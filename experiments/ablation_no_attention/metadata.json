@@ -1,6 +1,6 @@
 {
   "experiment_name": "ablation_no_attention",
-  "timestamp": "20260303_034042",
+  "timestamp": "20260306_202524",
   "status": "completed",
   "config": {
     "experiment_name": "ablation_no_attention",
@@ -8,17 +8,68 @@
     "model": {
       "type": "dca_net",
       "ablation": "no_attention",
+      "name": "OncoVisionX",
       "nodule_patch_size": 64,
       "context_patch_size": 48,
-      "backbone": "efficientnet_b0"
+      "backbone": "efficientnet_b0",
+      "num_classes": 1,
+      "nodule_feature_dim": 512,
+      "context_feature_dim": 256,
+      "fusion_dim": 256,
+      "num_attention_heads": 4,
+      "dropout": 0.5,
+      "prediction_dropout": 0.3,
+      "mc_dropout_passes": 10,
+      "slice_neighbors": 2
     },
     "training": {
-      "num_epochs": 60,
-      "batch_size": 32,
+      "num_epochs": 150,
+      "batch_size": 48,
       "learning_rate": 0.0003,
-      "weight_decay": 1e-05
+      "weight_decay": 1e-05,
+      "warmup_epochs": 3,
+      "curriculum": {
+        "stage1_epochs": 40,
+        "stage2_epochs": 40,
+        "stage3_epochs": 70
+      },
+      "optimizer": "AdamW",
+      "scheduler": "CosineAnnealingWarmRestarts",
+      "scheduler_T0": 15,
+      "scheduler_Tmult": 2,
+      "use_amp": false,
+      "gradient_clip": 1.0,
+      "gradient_accumulation_steps": 1,
+      "use_data_parallel": false,
+      "device_ids": [
+        0
+      ],
+      "loss_weights": {
+        "bce": 0.4,
+        "focal": 0.4,
+        "uncertainty": 0.2
+      },
+      "focal_gamma": 2.0,
+      "focal_alpha": 0.9375,
+      "label_smoothing": 0.1,
+      "early_stopping_patience": 50
     },
     "data": {
+      "data_dir": "data",
+      "preprocessed_dir": "preprocessed_data",
+      "num_workers": 8,
+      "pin_memory": true,
+      "prefetch_factor": 4,
+      "persistent_workers": true,
+      "positive_negative_ratio": 15,
+      "augmentation": {
+        "enabled": true,
+        "rotation": true,
+        "flip": true,
+        "noise": true,
+        "noise_std": 0.05,
+        "intensity_shift": 0.1
+      },
       "train_subsets": [
         0,
         1,
@@ -29,45 +80,51 @@
       ],
       "test_subsets": [
         4
-      ],
-      "num_workers": 16
+      ]
     },
     "logging": {
-      "log_dir": "experiments/ablation_no_attention/logs",
-      "checkpoint_dir": "experiments/ablation_no_attention/checkpoints"
+      "use_wandb": false,
+      "use_tensorboard": true,
+      "log_interval": 10,
+      "save_interval": 5,
+      "checkpoint_dir": "experiments/ablation_no_attention/checkpoints",
+      "log_dir": "experiments/ablation_no_attention/logs"
     },
     "paths": {
+      "data_root": "data",
+      "output_root": "results",
+      "model_save_dir": "experiments/ablation_no_attention/checkpoints",
       "log_dir": "experiments/ablation_no_attention/logs",
-      "model_save_dir": "experiments/ablation_no_attention/checkpoints"
+      "figures_dir": "results/figures"
     }
   },
   "results": {
     "experiment": "ablation_no_attention",
-    "best_epoch": 33,
-    "best_val_auc": 0.0,
+    "best_epoch": 80,
+    "best_val_auc": 0.9589099105252373,
     "test_results": {
-      "auc_roc": 0.6589599523909542,
-      "auc_pr": 0.1323818327801861,
-      "f1_score": 0.17266187050359713,
-      "accuracy": 0.6354166666666666,
-      "sensitivity": 0.6086956521739131,
-      "specificity": 0.6371980676328503,
-      "precision": 0.10059880239520957,
-      "true_positives": 84,
-      "false_positives": 751,
-      "true_negatives": 1319,
-      "false_negatives": 54,
+      "auc_roc": 0.9630382272631799,
+      "auc_pr": 0.8359203145258677,
+      "f1_score": 0.6139088729016786,
+      "accuracy": 0.9270833333333334,
+      "sensitivity": 0.927536231884058,
+      "specificity": 0.9270531400966183,
+      "precision": 0.45878136200716846,
+      "true_positives": 128,
+      "false_positives": 151,
+      "true_negatives": 1919,
+      "false_negatives": 10,
       "threshold": 0.5,
-      "sensitivity_at_0.5fp": 0.0,
-      "sensitivity_at_1fp": 0.0,
-      "sensitivity_at_2fp": 0.007246376811594203,
-      "sensitivity_at_4fp": 0.007246376811594203,
-      "sensitivity_at_8fp": 0.007246376811594203,
-      "ece": 0.46882410414948844,
+      "sensitivity_at_0.5fp": 0.1956521739130435,
+      "sensitivity_at_1fp": 0.1956521739130435,
+      "sensitivity_at_2fp": 0.1956521739130435,
+      "sensitivity_at_4fp": 0.4057971014492754,
+      "sensitivity_at_8fp": 0.5072463768115942,
+      "ece": 0.42966370600397175,
       "uncertainty": {
-        "mean_confidence": 0.9948137998580933,
-        "mean_confidence_correct": 0.9960399270057678,
-        "mean_confidence_incorrect": 0.9937798976898193,
+        "mean_confidence": 0.9942492246627808,
+        "mean_confidence_correct": 0.9955925345420837,
+        "mean_confidence_incorrect": 0.9890303015708923,
         "uncertain_cases_ratio": 0.0,
         "uncertain_cases_count": 0,
         "misclassified_flagged_by_uncertainty": 0.0
@@ -79,17 +136,68 @@
       "model": {
         "type": "dca_net",
         "ablation": "no_attention",
+        "name": "OncoVisionX",
         "nodule_patch_size": 64,
         "context_patch_size": 48,
-        "backbone": "efficientnet_b0"
+        "backbone": "efficientnet_b0",
+        "num_classes": 1,
+        "nodule_feature_dim": 512,
+        "context_feature_dim": 256,
+        "fusion_dim": 256,
+        "num_attention_heads": 4,
+        "dropout": 0.5,
+        "prediction_dropout": 0.3,
+        "mc_dropout_passes": 10,
+        "slice_neighbors": 2
       },
       "training": {
-        "num_epochs": 60,
-        "batch_size": 32,
+        "num_epochs": 150,
+        "batch_size": 48,
         "learning_rate": 0.0003,
-        "weight_decay": 1e-05
+        "weight_decay": 1e-05,
+        "warmup_epochs": 3,
+        "curriculum": {
+          "stage1_epochs": 40,
+          "stage2_epochs": 40,
+          "stage3_epochs": 70
+        },
+        "optimizer": "AdamW",
+        "scheduler": "CosineAnnealingWarmRestarts",
+        "scheduler_T0": 15,
+        "scheduler_Tmult": 2,
+        "use_amp": false,
+        "gradient_clip": 1.0,
+        "gradient_accumulation_steps": 1,
+        "use_data_parallel": false,
+        "device_ids": [
+          0
+        ],
+        "loss_weights": {
+          "bce": 0.4,
+          "focal": 0.4,
+          "uncertainty": 0.2
+        },
+        "focal_gamma": 2.0,
+        "focal_alpha": 0.9375,
+        "label_smoothing": 0.1,
+        "early_stopping_patience": 50
       },
       "data": {
+        "data_dir": "data",
+        "preprocessed_dir": "preprocessed_data",
+        "num_workers": 8,
+        "pin_memory": true,
+        "prefetch_factor": 4,
+        "persistent_workers": true,
+        "positive_negative_ratio": 15,
+        "augmentation": {
+          "enabled": true,
+          "rotation": true,
+          "flip": true,
+          "noise": true,
+          "noise_std": 0.05,
+          "intensity_shift": 0.1
+        },
         "train_subsets": [
           0,
           1,
@@ -100,16 +208,22 @@
         ],
         "test_subsets": [
           4
-        ],
-        "num_workers": 16
+        ]
       },
       "logging": {
-        "log_dir": "experiments/ablation_no_attention/logs",
-        "checkpoint_dir": "experiments/ablation_no_attention/checkpoints"
+        "use_wandb": false,
+        "use_tensorboard": true,
+        "log_interval": 10,
+        "save_interval": 5,
+        "checkpoint_dir": "experiments/ablation_no_attention/checkpoints",
+        "log_dir": "experiments/ablation_no_attention/logs"
       },
       "paths": {
+        "data_root": "data",
+        "output_root": "results",
+        "model_save_dir": "experiments/ablation_no_attention/checkpoints",
         "log_dir": "experiments/ablation_no_attention/logs",
-        "model_save_dir": "experiments/ablation_no_attention/checkpoints"
+        "figures_dir": "results/figures"
       }
     }
   }

@@ -113,6 +113,10 @@ class Trainer:
         self.global_step = 0
         self.start_epoch = 0
 
+        # Curriculum learning state
+        self._curriculum = self.train_cfg.get('curriculum', None)
+        self._current_curriculum_stage = 1 if self._curriculum else None
+
     def train_epoch(self, epoch):
         """Train for one epoch with gradient accumulation and warmup."""
         self.model.train()
@@ -387,6 +391,15 @@ class Trainer:
             f"(val_loss: {self.best_val_loss:.4f}, best_auc: {self.best_val_auc:.4f})"
         )
 
+    def _rebuild_train_loader(self, stage):
+        """Rebuild training DataLoader for curriculum stage transition."""
+        from src.data.dataset import create_data_loaders
+        self.logger.info(f"Rebuilding train loader for curriculum stage {stage}...")
+        train_loader, _, _ = create_data_loaders(self.config, curriculum_stage=stage)
+        self.train_loader = train_loader
+        self._current_curriculum_stage = stage
+        self.logger.info(f"  New train batches: {len(self.train_loader)}")
+
     def train(self, num_epochs=None, dry_run=False):
         """Full training loop."""
         if num_epochs is None:
@@ -397,13 +410,33 @@ class Trainer:
         self.logger.info(f"Device: {self.device}")
         self.logger.info(f"AMP (training only): {self.use_amp}")
         self.logger.info(f"Early stopping: patience={self.patience}, metric=AUC-ROC")
+        if self._curriculum:
+            self.logger.info(
+                f"Curriculum learning: stage1={self._curriculum.get('stage1_epochs',0)} eps, "
+                f"stage2={self._curriculum.get('stage2_epochs',0)} eps, "
+                f"stage3={self._curriculum.get('stage3_epochs',0)} eps"
+            )
         self.logger.info(f"{'='*60}\n")
+
+        # Initialize curriculum: rebuild with stage 1 if curriculum is enabled
+        if self._curriculum and self._current_curriculum_stage == 1 and self.start_epoch == 0:
+            self._rebuild_train_loader(stage=1)
 
         if dry_run:
             num_epochs = 1
             self.logger.info("DRY RUN MODE: running 2 batches only")
 
         for epoch in range(self.start_epoch, self.start_epoch + num_epochs):
+            # Check curriculum stage transitions
+            if self._curriculum:
+                s1_end = self._curriculum.get('stage1_epochs', 0)
+                s2_end = s1_end + self._curriculum.get('stage2_epochs', 0)
+                if epoch == s1_end and self._current_curriculum_stage < 2:
+                    self.logger.info(f"\n>>> Curriculum Stage 2: Adding medium-difficulty samples (epoch {epoch+1})")
+                    self._rebuild_train_loader(stage=2)
+                elif epoch == s2_end and self._current_curriculum_stage < 3:
+                    self.logger.info(f"\n>>> Curriculum Stage 3: Using ALL samples (epoch {epoch+1})")
+                    self._rebuild_train_loader(stage=3)
             start = time.time()
 
             if dry_run:

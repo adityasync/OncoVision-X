@@ -1,5 +1,18 @@
 data:
-  num_workers: 16
+  augmentation:
+    enabled: true
+    flip: true
+    intensity_shift: 0.1
+    noise: true
+    noise_std: 0.05
+    rotation: true
+  data_dir: data
+  num_workers: 8
+  persistent_workers: true
+  pin_memory: true
+  positive_negative_ratio: 15
+  prefetch_factor: 4
+  preprocessed_dir: preprocessed_data
   test_subsets:
   - 4
   train_subsets:
@@ -13,17 +26,57 @@ experiment_name: ablation_no_context
 logging:
   checkpoint_dir: experiments/ablation_no_context/checkpoints
   log_dir: experiments/ablation_no_context/logs
+  log_interval: 10
+  save_interval: 5
+  use_tensorboard: true
+  use_wandb: false
 model:
   ablation: no_context
   backbone: efficientnet_b0
+  context_feature_dim: 256
   context_patch_size: 48
+  dropout: 0.5
+  fusion_dim: 256
+  mc_dropout_passes: 10
+  name: OncoVisionX
+  nodule_feature_dim: 512
   nodule_patch_size: 64
+  num_attention_heads: 4
+  num_classes: 1
+  prediction_dropout: 0.3
+  slice_neighbors: 2
   type: dca_net
 paths:
+  data_root: data
+  figures_dir: results/figures
   log_dir: experiments/ablation_no_context/logs
   model_save_dir: experiments/ablation_no_context/checkpoints
+  output_root: results
 training:
-  batch_size: 32
+  batch_size: 48
+  curriculum:
+    stage1_epochs: 40
+    stage2_epochs: 40
+    stage3_epochs: 70
+  device_ids:
+  - 0
+  early_stopping_patience: 50
+  focal_alpha: 0.9375
+  focal_gamma: 2.0
+  gradient_accumulation_steps: 1
+  gradient_clip: 1.0
+  label_smoothing: 0.1
   learning_rate: 0.0003
-  num_epochs: 60
+  loss_weights:
+    bce: 0.4
+    focal: 0.4
+    uncertainty: 0.2
+  num_epochs: 150
+  optimizer: AdamW
+  scheduler: CosineAnnealingWarmRestarts
+  scheduler_T0: 15
+  scheduler_Tmult: 2
+  use_amp: false
+  use_data_parallel: false
+  warmup_epochs: 3
   weight_decay: 1.0e-05
