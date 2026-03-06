@@ -9,6 +9,8 @@ import os
 import yaml
 import torch
 import torch.nn as nn
+import numpy as np
+import random
 from datetime import datetime
 from pathlib import Path
 
@@ -182,6 +184,15 @@ def create_model(config):
 
 def train_experiment(args):
     """Main training function"""
+    
+    # Set random seeds for reproducibility (Section 3.1)
+    SEED = 42
+    torch.manual_seed(SEED)
+    torch.cuda.manual_seed_all(SEED)
+    np.random.seed(SEED)
+    random.seed(SEED)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
     
     # 1. Setup experiment manager
     exp_manager = ExperimentManager(args.experiment)

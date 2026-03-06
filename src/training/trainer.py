@@ -530,8 +530,8 @@ class Trainer:
             else:
                 self._collapse_count = 0  # Reset on healthy epoch
 
-            # Early stopping on AUC-ROC
-            is_best = val_auc > self.best_val_auc
+            # Early stopping on AUC-ROC (min_delta=0.001 per spec §2.4)
+            is_best = val_auc > (self.best_val_auc + 0.001)
             if is_best:
                 self.best_val_auc = val_auc
                 self.best_val_loss = val_loss

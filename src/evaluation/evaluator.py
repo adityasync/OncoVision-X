@@ -122,6 +122,10 @@ class Evaluator:
         specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
         precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
 
+        # FP per scan (assume ~30 candidates/scan, per spec Section 2.3)
+        total_scans = max(len(labels) / 30.0, 1.0)
+        fp_per_scan = float(fp) / total_scans
+
         metrics = {
             'auc_roc': float(auc_roc),
             'auc_pr': float(auc_pr),
@@ -130,6 +134,7 @@ class Evaluator:
             'sensitivity': float(sensitivity),
             'specificity': float(specificity),
             'precision': float(precision),
+            'fp_per_scan': float(fp_per_scan),
             'true_positives': int(tp),
             'false_positives': int(fp),
             'true_negatives': int(tn),
