@@ -4,18 +4,78 @@ description: "DCA-Net without 3D context stream"
 model:
   type: "dca_net"
   ablation: "no_context"
+  name: "OncoVisionX"
   nodule_patch_size: 64
   context_patch_size: 48
   backbone: "efficientnet_b0"
+  num_classes: 1
+  nodule_feature_dim: 512
+  context_feature_dim: 256
+  fusion_dim: 256
+  num_attention_heads: 4
+  dropout: 0.5
+  prediction_dropout: 0.3
+  mc_dropout_passes: 10
+  slice_neighbors: 2
 
 training:
-  num_epochs: 60
-  batch_size: 32
+  num_epochs: 150
+  batch_size: 48
   learning_rate: 0.0003
   weight_decay: 0.00001
-  
+  warmup_epochs: 3
+  curriculum:
+    stage1_epochs: 40
+    stage2_epochs: 40
+    stage3_epochs: 70
+  optimizer: "AdamW"
+  scheduler: "CosineAnnealingWarmRestarts"
+  scheduler_T0: 15
+  scheduler_Tmult: 2
+  use_amp: false
+  gradient_clip: 1.0
+  gradient_accumulation_steps: 1
+  use_data_parallel: false
+  device_ids: [0]
+  loss_weights:
+    bce: 0.4
+    focal: 0.4
+    uncertainty: 0.2
+  focal_gamma: 2.0
+  focal_alpha: 0.9375
+  label_smoothing: 0.1
+  early_stopping_patience: 50
+
 data:
+  data_dir: "data"
+  preprocessed_dir: "preprocessed_data"
+  num_workers: 8
+  pin_memory: true
+  prefetch_factor: 4
+  persistent_workers: true
+  positive_negative_ratio: 15
+  augmentation:
+    enabled: true
+    rotation: true
+    flip: true
+    noise: true
+    noise_std: 0.05
+    intensity_shift: 0.1
   train_subsets: [0, 1, 2]
   val_subsets: [3]
   test_subsets: [4]
-  num_workers: 16
+
+logging:
+  use_wandb: false
+  use_tensorboard: true
+  log_interval: 10
+  save_interval: 5
+  checkpoint_dir: "results/checkpoints"
+  log_dir: "logs"
+
+paths:
+  data_root: "data"
+  output_root: "results"
+  model_save_dir: "results/checkpoints"
+  log_dir: "logs"
+  figures_dir: "results/figures"

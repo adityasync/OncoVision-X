@@ -377,7 +377,16 @@ def main():
         logger.info(f"Model parameters: {params:,}")
         
         # Setup checkpoint dir for this fold
+        if 'logging' not in fold_config:
+            fold_config['logging'] = {}
         fold_config['logging']['checkpoint_dir'] = f'experiments/kfold/fold_{fold_id}/checkpoints'
+        
+        # Increase patience for k-fold (smaller training sets converge slower)
+        if 'training' not in fold_config:
+            fold_config['training'] = {}
+        fold_config['training']['early_stopping_patience'] = max(
+            fold_config.get('training', {}).get('early_stopping_patience', 35), 50
+        )
         
         # Train
         trainer = Trainer(model, fold_config, train_loader, val_loader, logger)
@@ -414,7 +423,7 @@ def main():
     # Aggregate results
     section("CROSS-VALIDATION RESULTS")
     
-    metric_names = ['auc_roc', 'auc_pr', 'sensitivity', 'specificity', 'f1', 'accuracy']
+    metric_names = ['auc_roc', 'auc_pr', 'sensitivity', 'specificity', 'precision', 'f1', 'accuracy']
     summary = {}
     
     for metric in metric_names:

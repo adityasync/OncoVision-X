@@ -291,7 +291,7 @@ def train_experiment(args):
         final_results = {
             'experiment': args.experiment,
             'best_epoch': checkpoint.get('epoch', 0),
-            'best_val_auc': checkpoint.get('val_auc', 0.0),
+            'best_val_auc': checkpoint.get('best_val_auc', 0.0),
             'test_results': test_results,
             'config': config
         }

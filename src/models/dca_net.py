@@ -239,20 +239,16 @@ class FusionModule(nn.Module):
         """
         Args:
             nodule_feats: (B, 512)
-            context_feats: (B, 256) (may be all zeros if ablation_no_context)
+            context_feats: (B, 256) or None (if no_context ablation)
         Returns:
             fused: (B, 256)
         """
-        combined = torch.cat([nodule_feats, context_feats], dim=-1)  # (B, 768)
+        if context_feats is not None:
+            combined = torch.cat([nodule_feats, context_feats], dim=-1)  # (B, 768)
+        else:
+            combined = nodule_feats  # (B, 512)
+
         proj = self.proj_in(combined)  # (B, fused_dim*2)
-        
-        # Check if context_feats are ALL zeros (ablation_no_context)
-        # If so, avoid MultiheadAttention as it can cause NaN gradients with zero-variance inputs
-        if torch.sum(torch.abs(context_feats)) < 1e-6:
-            # Bypass attention entirely: just use the initial projection
-            fused = self.ffn(proj)  # proj is (B, fused_dim*2), matching ffn input
-            fused = self.norm(fused)
-            return fused
 
         # Self-attention expects (B, seq_len, embed_dim) — treat as seq_len=1
         proj = proj.unsqueeze(1)  # (B, 1, fused_dim*2)
@@ -328,11 +324,17 @@ class DCANet(nn.Module):
             backbone_name=backbone, feature_dim=nodule_dim,
             num_neighbors=num_neighbors, ablation=self.ablation
         )
-        self.context_stream = ContextStream(feature_dim=context_dim)
 
-        # Fusion
+        # Context stream (skip entirely for no_context ablation)
+        if self.ablation != 'no_context':
+            self.context_stream = ContextStream(feature_dim=context_dim)
+        else:
+            self.context_stream = None
+
+        # Fusion — adjust input dimension when context is disabled
+        effective_context_dim = context_dim if self.ablation != 'no_context' else 0
         self.fusion = FusionModule(
-            nodule_dim=nodule_dim, context_dim=context_dim,
+            nodule_dim=nodule_dim, context_dim=effective_context_dim,
             fused_dim=fusion_dim, num_heads=num_heads, dropout=dropout
         )
 
@@ -352,11 +354,12 @@ class DCANet(nn.Module):
             logits: (B, 1)
         """
         nodule_feats, attn_weights = self.nodule_stream(nodule_patch)
-        context_feats = self.context_stream(context_patch)
-        
-        if self.ablation == 'no_context':
-            context_feats = torch.zeros_like(context_feats)
-            
+
+        if self.context_stream is not None:
+            context_feats = self.context_stream(context_patch)
+        else:
+            context_feats = None
+
         fused = self.fusion(nodule_feats, context_feats)
         logits = self.prediction_head(fused)
         return logits
