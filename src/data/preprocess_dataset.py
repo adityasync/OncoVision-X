@@ -20,6 +20,8 @@ import SimpleITK as sitk
 from pathlib import Path
 from tqdm import tqdm
 import json
+import logging
+from datetime import datetime
 from scipy.ndimage import zoom
 from concurrent.futures import ProcessPoolExecutor
 import gc
@@ -82,22 +84,67 @@ def banner():
 """)
 
 
+# ─────────────────────────────────────────────────────────────
+# Logging Setup
+# ─────────────────────────────────────────────────────────────
+logger = logging.getLogger('preprocessing')
+
+def setup_logging():
+    """Setup dual logging: console (colored) + file (clean text) in logs/ folder."""
+    log_dir = Path("logs")
+    log_dir.mkdir(parents=True, exist_ok=True)
+    
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    log_file = log_dir / f"preprocessing_{timestamp}.log"
+    
+    logger.setLevel(logging.DEBUG)
+    
+    # File handler — clean text (no ANSI colors)
+    fh = logging.FileHandler(log_file, encoding='utf-8')
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(logging.Formatter('%(asctime)s | %(levelname)-8s | %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
+    logger.addHandler(fh)
+    
+    # Console handler — minimal (print() handles colored console output)
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setLevel(logging.WARNING)  # Only warnings+ to avoid double-printing
+    ch.setFormatter(logging.Formatter('%(message)s'))
+    logger.addHandler(ch)
+    
+    logger.info(f"Preprocessing log started: {log_file}")
+    print(f"  {DIM}Log file:{RESET} {log_file}")
+    
+    return log_file
+
+
+def _strip_ansi(text):
+    """Remove ANSI escape codes for clean log file output."""
+    import re
+    return re.sub(r'\033\[[0-9;]*m', '', text)
+
+
 def section(title):
     print(f"\n{BOLD}{BLUE}{'─' * 60}")
     print(f"  {title}")
     print(f"{'─' * 60}{RESET}")
+    logger.info(f"{'─' * 60}")
+    logger.info(f"  {title}")
+    logger.info(f"{'─' * 60}")
 
 
 def info(label, value):
     print(f"  {DIM}{label}:{RESET} {value}")
+    logger.info(f"  {label}: {_strip_ansi(str(value))}")
 
 
 def success(msg):
     print(f"  {GREEN}✓ {msg}{RESET}")
+    logger.info(f"  ✓ {msg}")
 
 
 def warn(msg):
     print(f"  {YELLOW}! {msg}{RESET}")
+    logger.warning(f"  ! {msg}")
 
 
 def get_scan_paths():
@@ -395,6 +442,7 @@ def main():
     signal.signal(signal.SIGTERM, signal_handler)
     
     banner()
+    log_file = setup_logging()
     print(f"  {DIM}Press Ctrl+C to safely stop and save progress{RESET}\n")
     
     # Create output directories
