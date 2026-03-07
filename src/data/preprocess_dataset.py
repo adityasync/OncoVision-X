@@ -23,7 +23,9 @@ import json
 import logging
 from datetime import datetime
 from scipy.ndimage import zoom
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import multiprocessing
+import psutil
 import gc
 import signal
 import sys
@@ -40,11 +42,16 @@ HU_MIN = -1000
 HU_MAX = 400
 
 # Data balancing: 1 positive : 7 negatives (from roadmap)
-HARD_NEG_RATIO = 5  # Hard negatives per positive
-RANDOM_NEG_RATIO = 2  # Random negatives per positive
+HARD_NEG_RATIO = 3  # Hard negatives per positive (reduced from 5 — more generalizable)
+RANDOM_NEG_RATIO = 4  # Random negatives per positive (increased from 2 — better diversity)
 
 RANDOM_SEED = 42
 np.random.seed(RANDOM_SEED)
+
+# Parallel processing configuration
+# Use 32 of available CPU cores (leave some for system)
+NUM_WORKERS = min(32, max(1, multiprocessing.cpu_count() - 4))
+BATCH_SIZE = 64  # Process in batches for efficient checkpointing
 
 
 # ─────────────────────────────────────────────────────────────
@@ -148,13 +155,14 @@ def warn(msg):
 
 
 def get_scan_paths():
-    """Get all .mhd scan file paths organized by subset."""
+    """Get all .mhd scan file paths organized by subset (supports 0-9)."""
     scan_paths = {}
-    for i in range(5):
+    for i in range(10):  # Changed from range(5) to support full LUNA16 (0-9)
         subset_dir = DATA_DIR / f"subset{i}" / f"subset{i}"
         if subset_dir.exists():
             mhd_files = list(subset_dir.glob("*.mhd"))
-            scan_paths[f"subset{i}"] = mhd_files
+            if len(mhd_files) > 0:  # Only add if scans found
+                scan_paths[f"subset{i}"] = mhd_files
     return scan_paths
 
 
@@ -309,8 +317,8 @@ def process_scan(mhd_path, annotations_df, candidates_df, output_dir):
             avg_spacing = np.mean(spacing)  # Average across x,y,z
             for nodule in nodule_positions:
                 dist = np.linalg.norm(voxel_coord - nodule['voxel'])
-                # Consider "hard" if within 1.5x nodule diameter (in voxels)
-                threshold_voxels = (nodule['diameter_mm'] * 1.5) / avg_spacing
+                # Consider "hard" if within 2.0x nodule diameter (in voxels) — research-backed
+                threshold_voxels = (nodule['diameter_mm'] * 2.0) / avg_spacing
                 if dist < threshold_voxels:
                     is_hard_negative = True
                     break
@@ -376,27 +384,52 @@ def balance_samples(metadata_df, pos_to_neg_ratio=7):
 
 
 def create_splits(metadata_df, scan_paths):
-    """Create train/val/test splits based on subsets.
+    """Create train/val/test splits based on available subsets.
     
-    Split per roadmap:
-    - Train: subset0, subset1, subset2 (60%)
-    - Validation: subset3 (20%)
-    - Test: subset4 (20%)
+    Split strategy (adaptive):
+    - 10 subsets (full LUNA16):  Train subset0-7 (80%), Val subset8 (10%), Test subset9 (10%)
+    - 5 subsets (partial):       Train subset0-2 (60%), Val subset3 (20%), Test subset4 (20%)
+    - Other counts:             Train 60%, Val 20%, Test 20% by index
     """
-    # Get series UIDs for each split
     train_series = set()
     val_series = set()
     test_series = set()
     
+    available_subsets = sorted(scan_paths.keys())  # e.g. ['subset0', 'subset1', ...]
+    num_subsets = len(available_subsets)
+    
     for subset_name, paths in scan_paths.items():
         for path in paths:
             series_uid = path.stem
-            if subset_name in ['subset0', 'subset1', 'subset2']:
-                train_series.add(series_uid)
-            elif subset_name == 'subset3':
-                val_series.add(series_uid)
-            elif subset_name == 'subset4':
-                test_series.add(series_uid)
+            
+            if num_subsets >= 10:
+                # Full LUNA16 (10 subsets) — standard split
+                if subset_name in ['subset0', 'subset1', 'subset2', 'subset3',
+                                   'subset4', 'subset5', 'subset6', 'subset7']:
+                    train_series.add(series_uid)
+                elif subset_name == 'subset8':
+                    val_series.add(series_uid)
+                elif subset_name == 'subset9':
+                    test_series.add(series_uid)
+            elif num_subsets == 5:
+                # Partial LUNA16 (5 subsets)
+                if subset_name in ['subset0', 'subset1', 'subset2']:
+                    train_series.add(series_uid)
+                elif subset_name == 'subset3':
+                    val_series.add(series_uid)
+                elif subset_name == 'subset4':
+                    test_series.add(series_uid)
+            else:
+                # Generic: 60/20/20 by index
+                subset_idx = int(subset_name.replace('subset', ''))
+                train_cutoff = int(num_subsets * 0.6)
+                val_cutoff = int(num_subsets * 0.8)
+                if subset_idx < train_cutoff:
+                    train_series.add(series_uid)
+                elif subset_idx < val_cutoff:
+                    val_series.add(series_uid)
+                else:
+                    test_series.add(series_uid)
     
     train_df = metadata_df[metadata_df['series_uid'].isin(train_series)]
     val_df = metadata_df[metadata_df['series_uid'].isin(val_series)]
@@ -431,6 +464,31 @@ def signal_handler(signum, frame):
     global shutdown_requested
     print(f"\n\n  {BOLD}{RED}⚠️  Shutdown requested. Saving checkpoint and exiting...{RESET}")
     shutdown_requested = True
+
+
+def check_memory():
+    """Return True if at least 10 GB of RAM is available."""
+    mem = psutil.virtual_memory()
+    available_gb = mem.available / (1024 ** 3)
+    return available_gb >= 10
+
+
+def process_scan_wrapper(args):
+    """Top-level wrapper so ProcessPoolExecutor can pickle the call."""
+    mhd_path, annotations_df, candidates_df, output_dir = args
+    try:
+        results, stats = process_scan(mhd_path, annotations_df, candidates_df, output_dir)
+        return (mhd_path.stem, results, stats, None)
+    except Exception as e:
+        return (mhd_path.stem, [], {
+            'total': 0,
+            'success': 0,
+            'failures': {
+                'nodule_out_of_bounds': 0,
+                'context_out_of_bounds': 0,
+                'load_error': 1
+            }
+        }, str(e))
 
 
 def main():
@@ -489,47 +547,91 @@ def main():
         'total_load_error': 0
     }
     
+    # Check memory and auto-scale workers
+    if not check_memory():
+        warn(f"Low memory detected — reducing workers from {NUM_WORKERS} to {max(8, NUM_WORKERS // 2)}")
+        n_workers = max(8, NUM_WORKERS // 2)
+    else:
+        n_workers = NUM_WORKERS
+    info("Parallel workers", n_workers)
+
     for subset_name, paths in scan_paths.items():
         if shutdown_requested:
             break
-            
+
         print(f"\nProcessing {subset_name}...")
-        
+
         # Filter out already processed scans
         remaining_paths = [p for p in paths if p.stem not in processed_scans]
         skipped = len(paths) - len(remaining_paths)
         if skipped > 0:
             print(f"  (Skipping {skipped} already processed scans)")
-        
-        for mhd_path in tqdm(remaining_paths, desc=subset_name, bar_format='{l_bar}%s{bar}%s{r_bar}' % (GREEN, RESET)):
-            if shutdown_requested:
-                break
-                
-            series_uid = mhd_path.stem
-            
-            try:
-                results, scan_stats = process_scan(mhd_path, annotations_df, candidates_df, OUTPUT_DIR)
-                all_results.extend(results)
-                processed_scans.add(series_uid)
-                scans_processed_this_session += 1
-                
-                # Aggregate statistics
-                aggregate_stats['total_candidates'] += scan_stats['total']
-                aggregate_stats['total_success'] += scan_stats['success']
-                aggregate_stats['total_nodule_oob'] += scan_stats['failures']['nodule_out_of_bounds']
-                aggregate_stats['total_context_oob'] += scan_stats['failures']['context_out_of_bounds']
-                aggregate_stats['total_load_error'] += scan_stats['failures']['load_error']
-                
-                # Save checkpoint every 5 scans
-                if scans_processed_this_session % 5 == 0:
-                    save_checkpoint(checkpoint_path, processed_scans, all_results)
-                    
-                # Free memory
-                gc.collect()
-                
-            except Exception as e:
-                warn(f"Error processing {series_uid}: {e}")
-                continue
+
+        if len(remaining_paths) == 0:
+            print(f"  All scans in {subset_name} already processed")
+            continue
+
+        # Build task args for parallel execution
+        task_args = [(p, annotations_df, candidates_df, OUTPUT_DIR) for p in remaining_paths]
+        print(f"  Processing {len(remaining_paths)} scans with {n_workers} CPU cores...")
+
+        batch_results = []
+        batch_stats = []
+        completed = 0
+
+        with ProcessPoolExecutor(max_workers=n_workers) as executor:
+            futures = {executor.submit(process_scan_wrapper, a): a[0] for a in task_args}
+
+            with tqdm(total=len(futures), desc=subset_name,
+                      bar_format='{l_bar}%s{bar}%s{r_bar}' % (GREEN, RESET)) as pbar:
+
+                for future in as_completed(futures):
+                    if shutdown_requested:
+                        executor.shutdown(wait=False, cancel_futures=True)
+                        break
+
+                    try:
+                        series_uid, results, scan_stats, error = future.result()
+                        if error:
+                            warn(f"Error processing {series_uid}: {error}")
+
+                        batch_results.extend(results)
+                        batch_stats.append(scan_stats)
+                        processed_scans.add(series_uid)
+                        scans_processed_this_session += 1
+                        completed += 1
+
+                        # Checkpoint every ~1,000 patches in the batch
+                        if len(batch_results) >= 1000:
+                            all_results.extend(batch_results)
+                            for s in batch_stats:
+                                aggregate_stats['total_candidates'] += s['total']
+                                aggregate_stats['total_success'] += s['success']
+                                aggregate_stats['total_nodule_oob'] += s['failures']['nodule_out_of_bounds']
+                                aggregate_stats['total_context_oob'] += s['failures']['context_out_of_bounds']
+                                aggregate_stats['total_load_error'] += s['failures']['load_error']
+                            save_checkpoint(checkpoint_path, processed_scans, all_results)
+                            batch_results = []
+                            batch_stats = []
+                            gc.collect()
+
+                    except Exception as e:
+                        warn(f"Error getting result: {e}")
+                    finally:
+                        pbar.update(1)
+
+        # Flush remaining batch results
+        if batch_results:
+            all_results.extend(batch_results)
+            for s in batch_stats:
+                aggregate_stats['total_candidates'] += s['total']
+                aggregate_stats['total_success'] += s['success']
+                aggregate_stats['total_nodule_oob'] += s['failures']['nodule_out_of_bounds']
+                aggregate_stats['total_context_oob'] += s['failures']['context_out_of_bounds']
+                aggregate_stats['total_load_error'] += s['failures']['load_error']
+
+        gc.collect()
+        print(f"  Completed {completed}/{len(remaining_paths)} scans in {subset_name}")
     
     # Final checkpoint save
     save_checkpoint(checkpoint_path, processed_scans, all_results)
