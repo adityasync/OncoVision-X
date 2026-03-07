@@ -108,31 +108,34 @@ class NoduleStream(nn.Module):
             features: (B, 512)
             attn_weights: (B, num_slices, num_slices)
         """
+        # --- DATAPARALLEL FIX ---
+        # When using nn.DataParallel, x is split across GPUs.
+        # B here is the *local* batch size on this specific GPU.
         B, C, D, H, W = x.shape
 
-        # Reshape: treat depth as batch dim → (B*D, 1, H, W)
-        slices = x.squeeze(1)  # (B, D, H, W)
-        slices = slices.reshape(B * D, 1, H, W)  # (B*D, 1, H, W)
+        # Reshape: treat depth as batch dim → (local_B*D, 1, H, W)
+        slices = x.squeeze(1).contiguous()  # (local_B, D, H, W)
+        slices = slices.view(B * D, 1, H, W)  # (local_B*D, 1, H, W)
 
         # Forward through 2D backbone
-        slice_feats = self.backbone(slices)  # (B*D, backbone_out)
-        slice_feats = self.proj(slice_feats)  # (B*D, feature_dim)
+        slice_feats = self.backbone(slices)  # (local_B*D, backbone_out)
+        slice_feats = self.proj(slice_feats)  # (local_B*D, feature_dim)
 
-        # Reshape back: (B, D, feature_dim)
-        slice_feats = slice_feats.view(B, D, -1)
+        # Reshape back using the dynamically inferred local_B
+        slice_feats = slice_feats.view(B, D, -1)  # (local_B, D, feature_dim)
 
         # Cross-slice attention
         if self.ablation == 'no_attention':
             attended = slice_feats
             attn_weights = None
         else:
-            attended, attn_weights = self.cross_attn(slice_feats)  # (B, D, feature_dim)
+            attended, attn_weights = self.cross_attn(slice_feats)  # (local_B, D, feature_dim)
 
-        # Temporal 1D conv: (B, feature_dim, D)
-        temporal = attended.permute(0, 2, 1)
+        # Temporal 1D conv: (local_B, feature_dim, D)
+        temporal = attended.permute(0, 2, 1).contiguous()
         temporal = self.temporal_conv(temporal)
 
-        # Pool across slices → (B, feature_dim)
+        # Pool across slices → (local_B, feature_dim)
         features = self.pool(temporal).squeeze(-1)
 
         return features, attn_weights

@@ -46,8 +46,8 @@ training:
   # Multi-GPU settings
   # DataParallel DISABLED: NoduleStream's 3D→2D slice processing
   # causes cuDNN stream errors with multi-GPU.
-  use_data_parallel: false
-  device_ids: [0]
+  use_data_parallel: true
+  device_ids: [0, 1]
 
   # Loss function weights
   loss_weights:
