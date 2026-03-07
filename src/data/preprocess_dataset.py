@@ -187,21 +187,37 @@ def process_scan(mhd_path, annotations_df, candidates_df, output_dir):
         output_dir: Directory to save patches
     
     Returns:
-        List of (patch_path, label, is_hard_negative) tuples
+        results: List of dicts with patch metadata
+        stats: Dict with extraction statistics
     """
     series_uid = mhd_path.stem
     
     # Get candidates for this scan
     scan_candidates = candidates_df[candidates_df['seriesuid'] == series_uid]
+    
     if len(scan_candidates) == 0:
-        return []
+        return [], {'total': 0, 'success': 0, 'failures': {
+            'nodule_out_of_bounds': 0, 'context_out_of_bounds': 0, 'load_error': 0
+        }}
+    
+    # Initialize statistics
+    stats = {
+        'total': len(scan_candidates),
+        'success': 0,
+        'failures': {
+            'nodule_out_of_bounds': 0,
+            'context_out_of_bounds': 0,
+            'load_error': 0
+        }
+    }
     
     # Load the scan
     try:
         arr, origin, spacing, direction = load_scan(mhd_path)
     except Exception as e:
         warn(f"Error loading {mhd_path}: {e}")
-        return []
+        stats['failures']['load_error'] = len(scan_candidates)
+        return [], stats
     
     # Apply HU windowing
     arr_windowed = apply_hu_windowing(arr)
@@ -227,23 +243,27 @@ def process_scan(mhd_path, annotations_df, candidates_df, output_dir):
         # Extract nodule patch (64x64x64)
         nodule_patch = extract_patch(arr_windowed, voxel_coord, NODULE_PATCH_SIZE)
         if nodule_patch is None:
+            stats['failures']['nodule_out_of_bounds'] += 1
             continue
         
         # Extract context patch (96x96x96 → 48x48x48)
+        # FIX: Skip sample if context is out of bounds — don't create fake zero data
         context_patch = extract_patch(arr_windowed, voxel_coord, CONTEXT_PATCH_SIZE)
-        if context_patch is not None:
-            context_patch = downsample_patch(context_patch, CONTEXT_DOWNSAMPLE)
-        else:
-            # Use zero padding if context is out of bounds
-            context_patch = np.zeros((CONTEXT_DOWNSAMPLE, CONTEXT_DOWNSAMPLE, CONTEXT_DOWNSAMPLE), dtype=np.float32)
+        if context_patch is None:
+            stats['failures']['context_out_of_bounds'] += 1
+            continue  # Don't create fake data with zero-padding
+        
+        context_patch = downsample_patch(context_patch, CONTEXT_DOWNSAMPLE)
         
         # Determine if this is a hard negative (close to a real nodule)
+        # FIX: Use 1.5× diameter with average spacing (research-backed)
         is_hard_negative = False
         if label == 0 and len(nodule_positions) > 0:
+            avg_spacing = np.mean(spacing)  # Average across x,y,z
             for nodule in nodule_positions:
                 dist = np.linalg.norm(voxel_coord - nodule['voxel'])
-                # Consider "hard" if within 2x nodule diameter (in voxels)
-                threshold_voxels = (nodule['diameter_mm'] * 2) / min(spacing)
+                # Consider "hard" if within 1.5x nodule diameter (in voxels)
+                threshold_voxels = (nodule['diameter_mm'] * 1.5) / avg_spacing
                 if dist < threshold_voxels:
                     is_hard_negative = True
                     break
@@ -256,6 +276,7 @@ def process_scan(mhd_path, annotations_df, candidates_df, output_dir):
         np.savez_compressed(nodule_path, patch=nodule_patch)
         np.savez_compressed(context_path, patch=context_patch)
         
+        stats['success'] += 1
         results.append({
             'patch_id': patch_id,
             'series_uid': series_uid,
@@ -268,7 +289,14 @@ def process_scan(mhd_path, annotations_df, candidates_df, output_dir):
             'context_path': str(context_path)
         })
     
-    return results
+    # Log statistics if significant failures
+    total_failures = stats['failures']['nodule_out_of_bounds'] + stats['failures']['context_out_of_bounds']
+    if total_failures > 0:
+        failure_rate = total_failures / stats['total'] * 100
+        if failure_rate > 10:  # Warn if >10% failures
+            warn(f"{series_uid}: {failure_rate:.1f}% extraction failures ({total_failures}/{stats['total']})")
+    
+    return results, stats
 
 
 def balance_samples(metadata_df, pos_to_neg_ratio=7):
@@ -404,6 +432,15 @@ def main():
     section("PATCH EXTRACTION")
     scans_processed_this_session = 0
     
+    # Aggregate extraction statistics
+    aggregate_stats = {
+        'total_candidates': 0,
+        'total_success': 0,
+        'total_nodule_oob': 0,
+        'total_context_oob': 0,
+        'total_load_error': 0
+    }
+    
     for subset_name, paths in scan_paths.items():
         if shutdown_requested:
             break
@@ -423,10 +460,17 @@ def main():
             series_uid = mhd_path.stem
             
             try:
-                results = process_scan(mhd_path, annotations_df, candidates_df, OUTPUT_DIR)
+                results, scan_stats = process_scan(mhd_path, annotations_df, candidates_df, OUTPUT_DIR)
                 all_results.extend(results)
                 processed_scans.add(series_uid)
                 scans_processed_this_session += 1
+                
+                # Aggregate statistics
+                aggregate_stats['total_candidates'] += scan_stats['total']
+                aggregate_stats['total_success'] += scan_stats['success']
+                aggregate_stats['total_nodule_oob'] += scan_stats['failures']['nodule_out_of_bounds']
+                aggregate_stats['total_context_oob'] += scan_stats['failures']['context_out_of_bounds']
+                aggregate_stats['total_load_error'] += scan_stats['failures']['load_error']
                 
                 # Save checkpoint every 5 scans
                 if scans_processed_this_session % 5 == 0:
@@ -441,6 +485,18 @@ def main():
     
     # Final checkpoint save
     save_checkpoint(checkpoint_path, processed_scans, all_results)
+    
+    # Print extraction statistics
+    section("EXTRACTION STATISTICS")
+    info("Total candidates", f"{aggregate_stats['total_candidates']:,}")
+    info("Successfully extracted", f"{aggregate_stats['total_success']:,}")
+    info("Nodule out-of-bounds", f"{aggregate_stats['total_nodule_oob']:,}")
+    info("Context out-of-bounds", f"{aggregate_stats['total_context_oob']:,}")
+    info("Load errors", f"{aggregate_stats['total_load_error']:,}")
+    if aggregate_stats['total_candidates'] > 0:
+        total_rejected = (aggregate_stats['total_candidates'] - aggregate_stats['total_success'])
+        rejection_rate = total_rejected / aggregate_stats['total_candidates'] * 100
+        info("Rejection rate", f"{rejection_rate:.1f}%")
     
     if shutdown_requested:
         section("PREPROCESSING PAUSED")
@@ -463,34 +519,37 @@ def main():
     info("Status", "Creating train/val/test splits...")
     train_df, val_df, test_df = create_splits(metadata_df, scan_paths)
     
-    # Balance ALL splits (not just training!)
-    info("Status", "Balancing training set...")
-    train_balanced = balance_samples(train_df)
-    info("Status", "Balancing validation set...")
-    val_balanced = balance_samples(val_df)
-    info("Status", "Balancing test set...")
-    test_balanced = balance_samples(test_df)
+    # FIX: Only balance TRAINING set — val/test must maintain natural distribution
+    print(f"\n{BOLD}{BLUE}DATA BALANCING{RESET}")
+    info("Strategy", "Balancing TRAINING ONLY (1:7 ratio)")
+    info("Val/Test", "Keeping NATURAL distribution (~1:1350)")
     
-    def _print_split(name, df):
+    train_balanced = balance_samples(train_df, pos_to_neg_ratio=7)
+    val_final = val_df    # NO balancing - natural distribution
+    test_final = test_df  # NO balancing - natural distribution
+    
+    def _print_split(name, df, is_balanced=False):
         n_pos = (df['label'] == 1).sum()
         n_neg = (df['label'] == 0).sum()
         ratio = n_neg / max(n_pos, 1)
-        print(f"\n  {BOLD}{name}:{RESET} {len(df)} samples")
-        print(f"    {GREEN}Positives:{RESET} {n_pos}")
-        print(f"    {RED}Negatives:{RESET} {n_neg}")
-        print(f"    Ratio: 1:{ratio:.1f}")
+        status = "(balanced 1:7)" if is_balanced else "(natural ~1:1350)"
+        
+        print(f"\n  {BOLD}{name} {status}:{RESET} {len(df)} samples")
+        print(f"    {GREEN}Positives:{RESET} {n_pos:,}")
+        print(f"    {RED}Negatives:{RESET} {n_neg:,}")
+        print(f"    Ratio: 1:{ratio:.0f}")
     
-    print(f"\n  {BOLD}{BLUE}SPLIT STATISTICS{RESET}")
-    _print_split("Train (balanced)", train_balanced)
-    _print_split("Validation (balanced)", val_balanced)
-    _print_split("Test (balanced)", test_balanced)
+    print(f"\n  {BOLD}{BLUE}FINAL SPLIT STATISTICS{RESET}")
+    _print_split("Train", train_balanced, is_balanced=True)
+    _print_split("Validation", val_final, is_balanced=False)
+    _print_split("Test", test_final, is_balanced=False)
     
     # Save metadata
     section("SAVING")
     info("Status", "Saving metadata CSVs...")
     train_balanced.to_csv(OUTPUT_DIR / "metadata" / "train_samples.csv", index=False)
-    val_balanced.to_csv(OUTPUT_DIR / "metadata" / "val_samples.csv", index=False)
-    test_balanced.to_csv(OUTPUT_DIR / "metadata" / "test_samples.csv", index=False)
+    val_final.to_csv(OUTPUT_DIR / "metadata" / "val_samples.csv", index=False)
+    test_final.to_csv(OUTPUT_DIR / "metadata" / "test_samples.csv", index=False)
     metadata_df.to_csv(OUTPUT_DIR / "metadata" / "all_samples.csv", index=False)
     
     # Save statistics
@@ -499,8 +558,9 @@ def main():
         'total_positives': int((metadata_df['label'] == 1).sum()),
         'total_negatives': int((metadata_df['label'] == 0).sum()),
         'train_samples': len(train_balanced),
-        'val_samples': len(val_df),
-        'test_samples': len(test_df),
+        'val_samples': len(val_final),
+        'test_samples': len(test_final),
+        'extraction_stats': aggregate_stats,
         'patch_sizes': {
             'nodule': NODULE_PATCH_SIZE,
             'context': CONTEXT_DOWNSAMPLE
