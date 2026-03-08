@@ -33,7 +33,7 @@ training:
   scheduler_T0: 20
   scheduler_Tmult: 2
 
-  use_amp: false
+  use_amp: false  # Disabled per AMP crash
   gradient_clip: 1.0
   gradient_accumulation_steps: 1
 

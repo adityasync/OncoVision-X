@@ -23,9 +23,9 @@ training:
   gradient_clip: 1.0
   gradient_accumulation_steps: 1
 
-  # Single GPU
-  use_data_parallel: false
-  device_ids: [0]
+  # Multi GPU
+  use_data_parallel: true
+  device_ids: [0, 1]
 
   # No curriculum for baseline (train on all samples from epoch 1)
   curriculum:
@@ -106,7 +106,7 @@ paths:
 
 # Single GPU — controlled via CUDA_VISIBLE_DEVICES=1 at launch
 gpu:
-  use_multi_gpu: false
-  device_ids: [0]
+  use_multi_gpu: true
+  device_ids: [0, 1]
   strategy: "none"
   empty_cache_every: 10
