@@ -1,5 +1,5 @@
 experiment_name: "ablation_no_attention"
-description: "DCA-Net without cross-slice attention"
+description: "DCA-Net without cross-slice attention — ablation to prove attention mechanism helps"
 
 model:
   type: "dca_net"
@@ -8,6 +8,7 @@ model:
   nodule_patch_size: 64
   context_patch_size: 48
   backbone: "efficientnet_b0"
+  pretrained: false
   num_classes: 1
   nodule_feature_dim: 512
   context_feature_dim: 256
@@ -20,40 +21,54 @@ model:
 
 training:
   num_epochs: 150
+  early_stopping_patience: 40
   batch_size: 64
   learning_rate: 0.0003
   weight_decay: 0.00001
   warmup_epochs: 5
-  curriculum:
-    stage1_epochs: 50
-    stage2_epochs: 50
-    stage3_epochs: 50
+
   optimizer: "AdamW"
   scheduler: "CosineAnnealingWarmRestarts"
   scheduler_T0: 20
   scheduler_Tmult: 2
+
   use_amp: true
   gradient_clip: 1.0
   gradient_accumulation_steps: 1
-  use_data_parallel: true
-  device_ids: [0, 1]
+
+  # Single GPU per ablation
+  use_data_parallel: false
+  device_ids: [0]
+
+  curriculum:
+    stage1_epochs: 50
+    stage2_epochs: 50
+    stage3_epochs: 50
+
   loss_weights:
     bce: 0.3
     focal: 0.5
     uncertainty: 0.2
+
   focal_gamma: 2.5
   focal_alpha: 0.995
   label_smoothing: 0.05
-  early_stopping_patience: 40
 
 data:
   data_dir: "data"
   preprocessed_dir: "preprocessed_data"
-  num_workers: 12
+  metadata_dir: "preprocessed_data/metadata"
+  train_csv: "train_samples.csv"
+  val_csv: "val_samples.csv"
+  test_csv: "test_samples.csv"
+  num_workers: 6
   pin_memory: true
   prefetch_factor: 4
   persistent_workers: true
   positive_negative_ratio: 15
+  train_subsets: [0, 1, 2]
+  val_subsets: [3]
+  test_subsets: [4]
   augmentation:
     enabled: true
     rotation: true
@@ -68,15 +83,30 @@ data:
     elastic_prob: 0.2
     elastic_alpha: 100
     elastic_sigma: 10
-  train_subsets: [0, 1, 2]
-  val_subsets: [3]
-  test_subsets: [4]
+
+validation:
+  validate_every: 1
+  primary_metric: "auc_roc"
+  optimize_threshold: true
+  target_sensitivity: 0.90
+
+evaluation:
+  compute_froc: true
+  froc_fp_rates: [0.5, 1, 2, 4, 8]
+  compute_calibration: true
+  calibration_bins: 15
+  compute_uncertainty: true
+  mc_dropout_passes: 10
+  save_plots: true
+  plot_formats: ["png", "pdf"]
 
 logging:
   use_wandb: false
   use_tensorboard: true
   log_interval: 10
   save_interval: 5
+  keep_last_n: 3
+  save_best: true
   checkpoint_dir: "experiments/ablation_no_attention/checkpoints"
   log_dir: "experiments/ablation_no_attention/logs"
 
@@ -86,3 +116,10 @@ paths:
   model_save_dir: "experiments/ablation_no_attention/checkpoints"
   log_dir: "experiments/ablation_no_attention/logs"
   figures_dir: "results/figures"
+
+# Single GPU — controlled via CUDA_VISIBLE_DEVICES=1 at launch
+gpu:
+  use_multi_gpu: false
+  device_ids: [0]
+  strategy: "none"
+  empty_cache_every: 10
