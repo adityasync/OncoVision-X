@@ -159,9 +159,8 @@ def create_model(config):
     model_type = config.get('model', {}).get('type', 'dca_net')
     
     if model_type == 'dca_net':
-        ablation = config.get('model', {}).get('ablation', None)
-        if not ablation and 'ablation' in config:
-            ablation = config['ablation']
+        # Safely read ablation type from model block, or top-level fallback
+        ablation = config.get('model', {}).get('ablation', None) or config.get('ablation', None)
         
         from src.models.dca_net import DCANet
         model = DCANet(config) # The constructor handles the ablation internally 

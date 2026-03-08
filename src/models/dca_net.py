@@ -309,8 +309,10 @@ class DCANet(nn.Module):
         # Parse config or use defaults
         if config is None:
             config = {}
-        self.ablation = config.get('ablation', None)
         model_cfg = config.get('model', {})
+        # Read ablation from model section first (where YAML stores it),
+        # then fall back to top-level key for backward compatibility.
+        self.ablation = model_cfg.get('ablation', None) or config.get('ablation', None)
 
         backbone = model_cfg.get('backbone', 'efficientnet_b0')
         nodule_dim = model_cfg.get('nodule_feature_dim', 512)
