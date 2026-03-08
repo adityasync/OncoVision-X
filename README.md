@@ -40,16 +40,22 @@ Extensive component structures and data flow models have been mapped. Proceed to
 The OncoVision-X model has been extensively evaluated on the LUNA16 dataset using the `evaluate.py` pipeline. The model demonstrates high capability in distinguishing malignant nodules while maintaining rigorous uncertainty bounds.
 
 ### Key Metrics
-* **AUC-ROC:** `0.9555`
-* **Specificity:** `0.9783` (97.8% true negative rate)
-* **Sensitivity:** `0.7174`
-* **Accuracy:** `0.9457`
-* **Mean Confidence (Correct Predictions):** `0.9843`
+* **AUC-ROC:** `0.9582`
+* **Specificity:** `0.8715`
+* **Sensitivity:** `0.8919`
+* **Accuracy:** `0.8716`
+* **Mean Confidence (Correct Predictions):** `0.9924`
 
 ### Complete Performance & Visualizations
 For an in-depth look at all generated metrics, ROC/PR curves, uncertainty distributions, and Grad-CAM++ visualizations, see the dedicated performance documentation:
 
-👉 **[View Full Model Performance & Charts](docs/model_performance.md)**
+**Resources:**
+* ROC Curve: `experiments/full_model/metrics/figures/roc_curve.png`
+* PR Curve: `experiments/full_model/metrics/figures/pr_curve.png`
+* Confusion Matrix: `experiments/full_model/metrics/figures/confusion_matrix.png`
+* Evaluation Details: `experiments/full_model/metrics/evaluation_report.txt`
+
+**[View Full Model Performance & Charts](docs/model_performance.md)**
 
 ## Installation and Requirements
 
