@@ -82,7 +82,7 @@ evaluation:
   froc_fp_rates: [0.5, 1, 2, 4, 8]
   compute_calibration: true
   calibration_bins: 15
-  compute_uncertainty: true
+  compute_uncertainty: false
   mc_dropout_passes: 5
   save_plots: true
   plot_formats: ["png", "pdf"]
