@@ -58,6 +58,7 @@ training:
     stage3_epochs: 70
   device_ids:
   - 0
+  - 1
   early_stopping_patience: 35
   focal_alpha: 0.9375
   focal_gamma: 2.0
@@ -75,6 +76,6 @@ training:
   scheduler_T0: 15
   scheduler_Tmult: 2
   use_amp: false
-  use_data_parallel: false
+  use_data_parallel: true
   warmup_epochs: 3
   weight_decay: 1.0e-05

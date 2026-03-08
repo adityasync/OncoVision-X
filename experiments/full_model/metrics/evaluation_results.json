@@ -1,0 +1,29 @@
+{
+  "auc_roc": 0.9582273687315094,
+  "auc_pr": 0.29696413317696113,
+  "f1_score": 0.03590208522212149,
+  "accuracy": 0.8715979617957449,
+  "sensitivity": 0.8918918918918919,
+  "specificity": 0.8715434161460603,
+  "precision": 0.01831976313841599,
+  "fp_per_scan": 3.8433673839020503,
+  "true_positives": 99,
+  "false_positives": 5305,
+  "true_negatives": 35993,
+  "false_negatives": 12,
+  "threshold": 0.5,
+  "sensitivity_at_0.5fp": 0.009009009009009009,
+  "sensitivity_at_1fp": 0.009009009009009009,
+  "sensitivity_at_2fp": 0.009009009009009009,
+  "sensitivity_at_4fp": 0.11711711711711711,
+  "sensitivity_at_8fp": 0.18018018018018017,
+  "ece": 0.4805418928691681,
+  "uncertainty": {
+    "mean_confidence": 0.9836176037788391,
+    "mean_confidence_correct": 0.9923743009567261,
+    "mean_confidence_incorrect": 0.9790731072425842,
+    "uncertain_cases_ratio": 0.0,
+    "uncertain_cases_count": 0,
+    "misclassified_flagged_by_uncertainty": 0.0
+  }
+}
