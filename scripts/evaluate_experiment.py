@@ -142,7 +142,10 @@ def evaluate_model(model, dataloader, device, exp_manager, split='test'):
             
             # Uncertainty estimation (MC Dropout with 5 passes)
             predictions_mc = []
-            model.train()  # Enable dropout
+            # Enable only dropout layers to prevent BatchNorm crash on batch_size=1
+            for module in model.modules():
+                if isinstance(module, torch.nn.Dropout):
+                    module.train()
             for _ in range(5):
                 pred = model(nodule, context)
                 predictions_mc.append(pred.cpu())
