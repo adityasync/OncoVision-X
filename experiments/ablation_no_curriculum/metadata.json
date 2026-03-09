@@ -1,17 +1,18 @@
 {
   "experiment_name": "ablation_no_curriculum",
-  "timestamp": "20260306_202544",
+  "timestamp": "20260309_171221",
   "status": "completed",
   "config": {
     "experiment_name": "ablation_no_curriculum",
-    "description": "DCA-Net without progressive curriculum learning",
+    "description": "DCA-Net without progressive curriculum learning \u2014 ablation to prove curriculum helps",
     "model": {
       "type": "dca_net",
-      "ablation": "no_curriculum",
+      "ablation": null,
       "name": "OncoVisionX",
       "nodule_patch_size": 64,
       "context_patch_size": 48,
       "backbone": "efficientnet_b0",
+      "pretrained": false,
       "num_classes": 1,
       "nodule_feature_dim": 512,
       "context_feature_dim": 256,
@@ -24,13 +25,14 @@
     },
     "training": {
       "num_epochs": 150,
+      "early_stopping_patience": 40,
       "batch_size": 48,
       "learning_rate": 0.0003,
       "weight_decay": 1e-05,
-      "warmup_epochs": 3,
+      "warmup_epochs": 5,
       "optimizer": "AdamW",
       "scheduler": "CosineAnnealingWarmRestarts",
-      "scheduler_T0": 15,
+      "scheduler_T0": 20,
       "scheduler_Tmult": 2,
       "use_amp": false,
       "gradient_clip": 1.0,
@@ -39,32 +41,30 @@
       "device_ids": [
         0
       ],
+      "curriculum": {
+        "enabled": false
+      },
       "loss_weights": {
-        "bce": 0.4,
-        "focal": 0.4,
+        "bce": 0.3,
+        "focal": 0.5,
         "uncertainty": 0.2
       },
-      "focal_gamma": 2.0,
-      "focal_alpha": 0.9375,
-      "label_smoothing": 0.1,
-      "early_stopping_patience": 50
+      "focal_gamma": 2.5,
+      "focal_alpha": 0.995,
+      "label_smoothing": 0.05
     },
     "data": {
       "data_dir": "data",
       "preprocessed_dir": "preprocessed_data",
-      "num_workers": 8,
+      "metadata_dir": "preprocessed_data/metadata",
+      "train_csv": "train_samples.csv",
+      "val_csv": "val_samples.csv",
+      "test_csv": "test_samples.csv",
+      "num_workers": 6,
       "pin_memory": true,
       "prefetch_factor": 4,
       "persistent_workers": true,
       "positive_negative_ratio": 15,
-      "augmentation": {
-        "enabled": true,
-        "rotation": true,
-        "flip": true,
-        "noise": true,
-        "noise_std": 0.05,
-        "intensity_shift": 0.1
-      },
       "train_subsets": [
         0,
         1,
@@ -75,6 +75,49 @@
       ],
       "test_subsets": [
         4
+      ],
+      "augmentation": {
+        "enabled": true,
+        "rotation": true,
+        "rotation_range": 15,
+        "flip": true,
+        "flip_prob": 0.5,
+        "noise": true,
+        "noise_prob": 0.3,
+        "noise_std": 0.05,
+        "intensity_shift": 0.1,
+        "contrast_range": [
+          0.9,
+          1.1
+        ],
+        "elastic_prob": 0.2,
+        "elastic_alpha": 100,
+        "elastic_sigma": 10
+      }
+    },
+    "validation": {
+      "validate_every": 1,
+      "primary_metric": "auc_roc",
+      "optimize_threshold": true,
+      "target_sensitivity": 0.9
+    },
+    "evaluation": {
+      "compute_froc": true,
+      "froc_fp_rates": [
+        0.5,
+        1,
+        2,
+        4,
+        8
+      ],
+      "compute_calibration": true,
+      "calibration_bins": 15,
+      "compute_uncertainty": false,
+      "mc_dropout_passes": 10,
+      "save_plots": true,
+      "plot_formats": [
+        "png",
+        "pdf"
       ]
     },
     "logging": {
@@ -82,6 +125,8 @@
       "use_tensorboard": true,
       "log_interval": 10,
       "save_interval": 5,
+      "keep_last_n": 3,
+      "save_best": true,
       "checkpoint_dir": "experiments/ablation_no_curriculum/checkpoints",
       "log_dir": "experiments/ablation_no_curriculum/logs"
     },
@@ -91,35 +136,44 @@
       "model_save_dir": "experiments/ablation_no_curriculum/checkpoints",
       "log_dir": "experiments/ablation_no_curriculum/logs",
       "figures_dir": "results/figures"
+    },
+    "gpu": {
+      "use_multi_gpu": false,
+      "device_ids": [
+        0
+      ],
+      "strategy": "none",
+      "empty_cache_every": 10
     }
   },
   "results": {
     "experiment": "ablation_no_curriculum",
-    "best_epoch": 95,
-    "best_val_auc": 0.9537918630330352,
+    "best_epoch": 89,
+    "best_val_auc": 0.9270099049639211,
     "test_results": {
-      "auc_roc": 0.9497619547714066,
-      "auc_pr": 0.8002785835462622,
-      "f1_score": 0.6256684491978609,
-      "accuracy": 0.9365942028985508,
-      "sensitivity": 0.8478260869565217,
-      "specificity": 0.942512077294686,
-      "precision": 0.4957627118644068,
-      "true_positives": 117,
-      "false_positives": 119,
-      "true_negatives": 1951,
-      "false_negatives": 21,
+      "auc_roc": 0.9471221912018076,
+      "auc_pr": 0.3050982048796186,
+      "f1_score": 0.0724755700325733,
+      "accuracy": 0.9449878045835446,
+      "sensitivity": 0.8018018018018018,
+      "specificity": 0.9453726572715385,
+      "precision": 0.03795309168443497,
+      "fp_per_scan": 1.6344272984133885,
+      "true_positives": 89,
+      "false_positives": 2256,
+      "true_negatives": 39042,
+      "false_negatives": 22,
       "threshold": 0.5,
-      "sensitivity_at_0.5fp": 0.13768115942028986,
-      "sensitivity_at_1fp": 0.13768115942028986,
-      "sensitivity_at_2fp": 0.2391304347826087,
-      "sensitivity_at_4fp": 0.34057971014492755,
-      "sensitivity_at_8fp": 0.6086956521739131,
-      "ece": 0.4202417934016473,
+      "sensitivity_at_0.5fp": 0.04504504504504504,
+      "sensitivity_at_1fp": 0.04504504504504504,
+      "sensitivity_at_2fp": 0.04504504504504504,
+      "sensitivity_at_4fp": 0.08108108108108109,
+      "sensitivity_at_8fp": 0.12612612612612611,
+      "ece": 0.26272813360210134,
       "uncertainty": {
-        "mean_confidence": 0.9948509335517883,
-        "mean_confidence_correct": 0.9954291582107544,
-        "mean_confidence_incorrect": 0.9910107254981995,
+        "mean_confidence": 0.9931048154830933,
+        "mean_confidence_correct": 0.9930337071418762,
+        "mean_confidence_incorrect": 0.9940202832221985,
         "uncertain_cases_ratio": 0.0,
         "uncertain_cases_count": 0,
         "misclassified_flagged_by_uncertainty": 0.0
@@ -127,14 +181,15 @@
     },
     "config": {
       "experiment_name": "ablation_no_curriculum",
-      "description": "DCA-Net without progressive curriculum learning",
+      "description": "DCA-Net without progressive curriculum learning \u2014 ablation to prove curriculum helps",
       "model": {
         "type": "dca_net",
-        "ablation": "no_curriculum",
+        "ablation": null,
         "name": "OncoVisionX",
         "nodule_patch_size": 64,
         "context_patch_size": 48,
         "backbone": "efficientnet_b0",
+        "pretrained": false,
         "num_classes": 1,
         "nodule_feature_dim": 512,
         "context_feature_dim": 256,
@@ -147,13 +202,14 @@
       },
       "training": {
         "num_epochs": 150,
+        "early_stopping_patience": 40,
         "batch_size": 48,
         "learning_rate": 0.0003,
         "weight_decay": 1e-05,
-        "warmup_epochs": 3,
+        "warmup_epochs": 5,
         "optimizer": "AdamW",
         "scheduler": "CosineAnnealingWarmRestarts",
-        "scheduler_T0": 15,
+        "scheduler_T0": 20,
         "scheduler_Tmult": 2,
         "use_amp": false,
         "gradient_clip": 1.0,
@@ -162,32 +218,30 @@
         "device_ids": [
           0
         ],
+        "curriculum": {
+          "enabled": false
+        },
         "loss_weights": {
-          "bce": 0.4,
-          "focal": 0.4,
+          "bce": 0.3,
+          "focal": 0.5,
           "uncertainty": 0.2
         },
-        "focal_gamma": 2.0,
-        "focal_alpha": 0.9375,
-        "label_smoothing": 0.1,
-        "early_stopping_patience": 50
+        "focal_gamma": 2.5,
+        "focal_alpha": 0.995,
+        "label_smoothing": 0.05
       },
       "data": {
         "data_dir": "data",
         "preprocessed_dir": "preprocessed_data",
-        "num_workers": 8,
+        "metadata_dir": "preprocessed_data/metadata",
+        "train_csv": "train_samples.csv",
+        "val_csv": "val_samples.csv",
+        "test_csv": "test_samples.csv",
+        "num_workers": 6,
         "pin_memory": true,
         "prefetch_factor": 4,
         "persistent_workers": true,
         "positive_negative_ratio": 15,
-        "augmentation": {
-          "enabled": true,
-          "rotation": true,
-          "flip": true,
-          "noise": true,
-          "noise_std": 0.05,
-          "intensity_shift": 0.1
-        },
         "train_subsets": [
           0,
           1,
@@ -198,6 +252,49 @@
         ],
         "test_subsets": [
           4
+        ],
+        "augmentation": {
+          "enabled": true,
+          "rotation": true,
+          "rotation_range": 15,
+          "flip": true,
+          "flip_prob": 0.5,
+          "noise": true,
+          "noise_prob": 0.3,
+          "noise_std": 0.05,
+          "intensity_shift": 0.1,
+          "contrast_range": [
+            0.9,
+            1.1
+          ],
+          "elastic_prob": 0.2,
+          "elastic_alpha": 100,
+          "elastic_sigma": 10
+        }
+      },
+      "validation": {
+        "validate_every": 1,
+        "primary_metric": "auc_roc",
+        "optimize_threshold": true,
+        "target_sensitivity": 0.9
+      },
+      "evaluation": {
+        "compute_froc": true,
+        "froc_fp_rates": [
+          0.5,
+          1,
+          2,
+          4,
+          8
+        ],
+        "compute_calibration": true,
+        "calibration_bins": 15,
+        "compute_uncertainty": false,
+        "mc_dropout_passes": 10,
+        "save_plots": true,
+        "plot_formats": [
+          "png",
+          "pdf"
         ]
       },
       "logging": {
@@ -205,6 +302,8 @@
         "use_tensorboard": true,
         "log_interval": 10,
         "save_interval": 5,
+        "keep_last_n": 3,
+        "save_best": true,
         "checkpoint_dir": "experiments/ablation_no_curriculum/checkpoints",
         "log_dir": "experiments/ablation_no_curriculum/logs"
       },
@@ -214,6 +313,14 @@
         "model_save_dir": "experiments/ablation_no_curriculum/checkpoints",
         "log_dir": "experiments/ablation_no_curriculum/logs",
         "figures_dir": "results/figures"
+      },
+      "gpu": {
+        "use_multi_gpu": false,
+        "device_ids": [
+          0
+        ],
+        "strategy": "none",
+        "empty_cache_every": 10
       }
     }
   }
