@@ -5,38 +5,38 @@ Lung Nodule Classification — LUNA16 Dataset
 
 CLASSIFICATION METRICS
 ----------------------------------------
-  AUC-ROC:         0.9430
-  AUC-PR:          0.3164
-  Sensitivity:     0.7658
-  Specificity:     0.9440
-  Precision:       0.0355
-  F1-Score:        0.0678
-  Accuracy:        0.9436
+  AUC-ROC:         0.9488
+  AUC-PR:          0.2088
+  Sensitivity:     0.7838
+  Specificity:     0.9370
+  Precision:       0.0323
+  F1-Score:        0.0621
+  Accuracy:        0.9366
 
 CONFUSION MATRIX
 ----------------------------------------
-  True Positives:  85
-  False Positives: 2311
-  True Negatives:  38987
-  False Negatives: 26
+  True Positives:  87
+  False Positives: 2603
+  True Negatives:  38695
+  False Negatives: 24
 
 FROC ANALYSIS
 ----------------------------------------
-  Sensitivity @ 0.5 FP/scan: 0.0901
-  Sensitivity @ 1 FP/scan: 0.0901
-  Sensitivity @ 2 FP/scan: 0.1261
-  Sensitivity @ 4 FP/scan: 0.1351
-  Sensitivity @ 8 FP/scan: 0.1982
+  Sensitivity @ 0.5 FP/scan: 0.0180
+  Sensitivity @ 1 FP/scan: 0.0180
+  Sensitivity @ 2 FP/scan: 0.0360
+  Sensitivity @ 4 FP/scan: 0.0541
+  Sensitivity @ 8 FP/scan: 0.0541
 
 CALIBRATION
 ----------------------------------------
-  ECE:             0.3369
+  ECE:             0.2689
 
 UNCERTAINTY ANALYSIS
 ----------------------------------------
-  Mean Confidence (all):       0.9912
-  Mean Confidence (correct):   0.9912
-  Mean Confidence (incorrect): 0.9909
+  Mean Confidence (all):       1.0000
+  Mean Confidence (correct):   1.0000
+  Mean Confidence (incorrect): 1.0000
   Uncertain cases (<0.7):      0 (0.0%)
   Misclassified flagged:       0.0%
 

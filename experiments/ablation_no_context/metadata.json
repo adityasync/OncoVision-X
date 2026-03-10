@@ -1,10 +1,10 @@
 {
   "experiment_name": "ablation_no_context",
-  "timestamp": "20260306_151153",
+  "timestamp": "20260310_020528",
   "status": "completed",
   "config": {
     "experiment_name": "ablation_no_context",
-    "description": "DCA-Net without 3D context stream",
+    "description": "DCA-Net without 3D context stream \u2014 ablation to prove context stream helps",
     "model": {
       "type": "dca_net",
       "ablation": "no_context",
@@ -12,6 +12,7 @@
       "nodule_patch_size": 64,
       "context_patch_size": 48,
       "backbone": "efficientnet_b0",
+      "pretrained": false,
       "num_classes": 1,
       "nodule_feature_dim": 512,
       "context_feature_dim": 256,
@@ -24,52 +25,48 @@
     },
     "training": {
       "num_epochs": 150,
+      "early_stopping_patience": 40,
       "batch_size": 48,
       "learning_rate": 0.0003,
       "weight_decay": 1e-05,
-      "warmup_epochs": 3,
-      "curriculum": {
-        "stage1_epochs": 40,
-        "stage2_epochs": 40,
-        "stage3_epochs": 70
-      },
+      "warmup_epochs": 5,
       "optimizer": "AdamW",
       "scheduler": "CosineAnnealingWarmRestarts",
-      "scheduler_T0": 15,
+      "scheduler_T0": 20,
       "scheduler_Tmult": 2,
       "use_amp": false,
       "gradient_clip": 1.0,
       "gradient_accumulation_steps": 1,
       "use_data_parallel": false,
       "device_ids": [
-        0
+        1
       ],
+      "curriculum": {
+        "stage1_epochs": 50,
+        "stage2_epochs": 50,
+        "stage3_epochs": 50
+      },
       "loss_weights": {
-        "bce": 0.4,
-        "focal": 0.4,
+        "bce": 0.3,
+        "focal": 0.5,
         "uncertainty": 0.2
       },
-      "focal_gamma": 2.0,
-      "focal_alpha": 0.9375,
-      "label_smoothing": 0.1,
-      "early_stopping_patience": 50
+      "focal_gamma": 2.5,
+      "focal_alpha": 0.995,
+      "label_smoothing": 0.05
     },
     "data": {
       "data_dir": "data",
       "preprocessed_dir": "preprocessed_data",
-      "num_workers": 8,
+      "metadata_dir": "preprocessed_data/metadata",
+      "train_csv": "train_samples.csv",
+      "val_csv": "val_samples.csv",
+      "test_csv": "test_samples.csv",
+      "num_workers": 6,
       "pin_memory": true,
       "prefetch_factor": 4,
       "persistent_workers": true,
       "positive_negative_ratio": 15,
-      "augmentation": {
-        "enabled": true,
-        "rotation": true,
-        "flip": true,
-        "noise": true,
-        "noise_std": 0.05,
-        "intensity_shift": 0.1
-      },
       "train_subsets": [
         0,
         1,
@@ -80,6 +77,49 @@
       ],
       "test_subsets": [
         4
+      ],
+      "augmentation": {
+        "enabled": true,
+        "rotation": true,
+        "rotation_range": 15,
+        "flip": true,
+        "flip_prob": 0.5,
+        "noise": true,
+        "noise_prob": 0.3,
+        "noise_std": 0.05,
+        "intensity_shift": 0.1,
+        "contrast_range": [
+          0.9,
+          1.1
+        ],
+        "elastic_prob": 0.2,
+        "elastic_alpha": 100,
+        "elastic_sigma": 10
+      }
+    },
+    "validation": {
+      "validate_every": 1,
+      "primary_metric": "auc_roc",
+      "optimize_threshold": true,
+      "target_sensitivity": 0.9
+    },
+    "evaluation": {
+      "compute_froc": true,
+      "froc_fp_rates": [
+        0.5,
+        1,
+        2,
+        4,
+        8
+      ],
+      "compute_calibration": true,
+      "calibration_bins": 15,
+      "compute_uncertainty": false,
+      "mc_dropout_passes": 10,
+      "save_plots": true,
+      "plot_formats": [
+        "png",
+        "pdf"
       ]
     },
     "logging": {
@@ -87,6 +127,8 @@
       "use_tensorboard": true,
       "log_interval": 10,
       "save_interval": 5,
+      "keep_last_n": 3,
+      "save_best": true,
       "checkpoint_dir": "experiments/ablation_no_context/checkpoints",
       "log_dir": "experiments/ablation_no_context/logs"
     },
@@ -96,35 +138,44 @@
       "model_save_dir": "experiments/ablation_no_context/checkpoints",
       "log_dir": "experiments/ablation_no_context/logs",
       "figures_dir": "results/figures"
+    },
+    "gpu": {
+      "use_multi_gpu": false,
+      "device_ids": [
+        1
+      ],
+      "strategy": "none",
+      "empty_cache_every": 10
     }
   },
   "results": {
     "experiment": "ablation_no_context",
-    "best_epoch": 117,
-    "best_val_auc": 0.9751975047241764,
+    "best_epoch": 78,
+    "best_val_auc": 0.933442941989015,
     "test_results": {
-      "auc_roc": 0.9766330602814535,
-      "auc_pr": 0.8554243815217853,
-      "f1_score": 0.7246376811594203,
-      "accuracy": 0.9569746376811594,
-      "sensitivity": 0.9057971014492754,
-      "specificity": 0.9603864734299516,
-      "precision": 0.6038647342995169,
-      "true_positives": 125,
-      "false_positives": 82,
-      "true_negatives": 1988,
-      "false_negatives": 13,
+      "auc_roc": 0.9429885355353902,
+      "auc_pr": 0.3163934908802332,
+      "f1_score": 0.06781013163143199,
+      "accuracy": 0.9435629935521264,
+      "sensitivity": 0.7657657657657657,
+      "specificity": 0.9440408736500557,
+      "precision": 0.03547579298831385,
+      "fp_per_scan": 1.6742737086140695,
+      "true_positives": 85,
+      "false_positives": 2311,
+      "true_negatives": 38987,
+      "false_negatives": 26,
       "threshold": 0.5,
-      "sensitivity_at_0.5fp": 0.021739130434782608,
-      "sensitivity_at_1fp": 0.021739130434782608,
-      "sensitivity_at_2fp": 0.2898550724637681,
-      "sensitivity_at_4fp": 0.5144927536231884,
-      "sensitivity_at_8fp": 0.5652173913043478,
-      "ece": 0.39121327433141245,
+      "sensitivity_at_0.5fp": 0.09009009009009009,
+      "sensitivity_at_1fp": 0.09009009009009009,
+      "sensitivity_at_2fp": 0.12612612612612611,
+      "sensitivity_at_4fp": 0.13513513513513514,
+      "sensitivity_at_8fp": 0.1981981981981982,
+      "ece": 0.3369135783772539,
       "uncertainty": {
-        "mean_confidence": 0.9927444458007812,
-        "mean_confidence_correct": 0.993435800075531,
-        "mean_confidence_incorrect": 0.9864336252212524,
+        "mean_confidence": 0.9911632537841797,
+        "mean_confidence_correct": 0.9911929368972778,
+        "mean_confidence_incorrect": 0.9909138679504395,
         "uncertain_cases_ratio": 0.0,
         "uncertain_cases_count": 0,
         "misclassified_flagged_by_uncertainty": 0.0
@@ -132,7 +183,7 @@
     },
     "config": {
       "experiment_name": "ablation_no_context",
-      "description": "DCA-Net without 3D context stream",
+      "description": "DCA-Net without 3D context stream \u2014 ablation to prove context stream helps",
       "model": {
         "type": "dca_net",
         "ablation": "no_context",
@@ -140,6 +191,7 @@
         "nodule_patch_size": 64,
         "context_patch_size": 48,
         "backbone": "efficientnet_b0",
+        "pretrained": false,
         "num_classes": 1,
         "nodule_feature_dim": 512,
         "context_feature_dim": 256,
@@ -152,52 +204,48 @@
       },
       "training": {
         "num_epochs": 150,
+        "early_stopping_patience": 40,
         "batch_size": 48,
         "learning_rate": 0.0003,
         "weight_decay": 1e-05,
-        "warmup_epochs": 3,
-        "curriculum": {
-          "stage1_epochs": 40,
-          "stage2_epochs": 40,
-          "stage3_epochs": 70
-        },
+        "warmup_epochs": 5,
         "optimizer": "AdamW",
         "scheduler": "CosineAnnealingWarmRestarts",
-        "scheduler_T0": 15,
+        "scheduler_T0": 20,
         "scheduler_Tmult": 2,
         "use_amp": false,
         "gradient_clip": 1.0,
         "gradient_accumulation_steps": 1,
         "use_data_parallel": false,
         "device_ids": [
-          0
+          1
         ],
+        "curriculum": {
+          "stage1_epochs": 50,
+          "stage2_epochs": 50,
+          "stage3_epochs": 50
+        },
         "loss_weights": {
-          "bce": 0.4,
-          "focal": 0.4,
+          "bce": 0.3,
+          "focal": 0.5,
           "uncertainty": 0.2
         },
-        "focal_gamma": 2.0,
-        "focal_alpha": 0.9375,
-        "label_smoothing": 0.1,
-        "early_stopping_patience": 50
+        "focal_gamma": 2.5,
+        "focal_alpha": 0.995,
+        "label_smoothing": 0.05
       },
       "data": {
         "data_dir": "data",
         "preprocessed_dir": "preprocessed_data",
-        "num_workers": 8,
+        "metadata_dir": "preprocessed_data/metadata",
+        "train_csv": "train_samples.csv",
+        "val_csv": "val_samples.csv",
+        "test_csv": "test_samples.csv",
+        "num_workers": 6,
         "pin_memory": true,
         "prefetch_factor": 4,
         "persistent_workers": true,
         "positive_negative_ratio": 15,
-        "augmentation": {
-          "enabled": true,
-          "rotation": true,
-          "flip": true,
-          "noise": true,
-          "noise_std": 0.05,
-          "intensity_shift": 0.1
-        },
         "train_subsets": [
           0,
           1,
@@ -208,6 +256,49 @@
         ],
         "test_subsets": [
           4
+        ],
+        "augmentation": {
+          "enabled": true,
+          "rotation": true,
+          "rotation_range": 15,
+          "flip": true,
+          "flip_prob": 0.5,
+          "noise": true,
+          "noise_prob": 0.3,
+          "noise_std": 0.05,
+          "intensity_shift": 0.1,
+          "contrast_range": [
+            0.9,
+            1.1
+          ],
+          "elastic_prob": 0.2,
+          "elastic_alpha": 100,
+          "elastic_sigma": 10
+        }
+      },
+      "validation": {
+        "validate_every": 1,
+        "primary_metric": "auc_roc",
+        "optimize_threshold": true,
+        "target_sensitivity": 0.9
+      },
+      "evaluation": {
+        "compute_froc": true,
+        "froc_fp_rates": [
+          0.5,
+          1,
+          2,
+          4,
+          8
+        ],
+        "compute_calibration": true,
+        "calibration_bins": 15,
+        "compute_uncertainty": false,
+        "mc_dropout_passes": 10,
+        "save_plots": true,
+        "plot_formats": [
+          "png",
+          "pdf"
         ]
       },
       "logging": {
@@ -215,6 +306,8 @@
         "use_tensorboard": true,
         "log_interval": 10,
         "save_interval": 5,
+        "keep_last_n": 3,
+        "save_best": true,
         "checkpoint_dir": "experiments/ablation_no_context/checkpoints",
         "log_dir": "experiments/ablation_no_context/logs"
       },
@@ -224,6 +317,14 @@
         "model_save_dir": "experiments/ablation_no_context/checkpoints",
         "log_dir": "experiments/ablation_no_context/logs",
         "figures_dir": "results/figures"
+      },
+      "gpu": {
+        "use_multi_gpu": false,
+        "device_ids": [
+          1
+        ],
+        "strategy": "none",
+        "empty_cache_every": 10
       }
     }
   }
