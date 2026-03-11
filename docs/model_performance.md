@@ -64,3 +64,15 @@ The model integrates Grad-CAM++ to highlight exactly what physiological characte
 </p>
 
 *The heatmaps provide transparent mappings of critical spiculation and boundary structures that influenced the final classification layer.*
+
+---
+
+## 6. Structural & Methodological Ablation Proofs
+
+Beyond the performance of the full DCA-Net baseline, exhaustive empirical ablation tests were conducted to mathematically defend the presence of every major module in the network. These extensive tests explicitly isolate the performance impact (and subsequent clinical danger) of removing core features.
+
+Read the deep-dive research methodology reports here:
+1. **[The Indispensable Role of 3D Context Representation](ablations/no_context.md)**
+2. **[The Necessity of Multi-Head Attention Filtering](ablations/no_attention.md)**
+3. **[Curriculum Learning as a Vital Optimization Stabilizer](ablations/no_curriculum.md)**
+4. **[Multi-Task Regularization via Uncertainty Estimation](ablations/no_uncertainty.md)**
