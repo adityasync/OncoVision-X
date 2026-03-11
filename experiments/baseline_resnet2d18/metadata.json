@@ -1,22 +1,58 @@
 {
   "experiment_name": "baseline_resnet2d18",
-  "timestamp": "20260303_184157",
+  "timestamp": "20260310_132756",
   "status": "completed",
   "config": {
     "experiment_name": "baseline_resnet2d18",
-    "description": "Standard 2D ResNet-18 (slice-level) baseline",
+    "description": "Standard 2D ResNet-18 (slice-level) baseline \u2014 comparison to 3D + context DCA-Net",
     "model": {
       "type": "resnet2d18",
       "input_size": 64,
       "num_classes": 1
     },
     "training": {
-      "num_epochs": 60,
-      "batch_size": 16,
-      "learning_rate": 0.0001,
-      "weight_decay": 1e-05
+      "num_epochs": 150,
+      "early_stopping_patience": 40,
+      "batch_size": 64,
+      "learning_rate": 0.0003,
+      "weight_decay": 1e-05,
+      "warmup_epochs": 5,
+      "optimizer": "AdamW",
+      "scheduler": "CosineAnnealingWarmRestarts",
+      "scheduler_T0": 20,
+      "scheduler_Tmult": 2,
+      "use_amp": true,
+      "gradient_clip": 1.0,
+      "gradient_accumulation_steps": 1,
+      "use_data_parallel": true,
+      "device_ids": [
+        0,
+        1
+      ],
+      "curriculum": {
+        "enabled": false
+      },
+      "loss_weights": {
+        "bce": 0.5,
+        "focal": 0.5,
+        "uncertainty": 0.0
+      },
+      "focal_gamma": 2.5,
+      "focal_alpha": 0.995,
+      "label_smoothing": 0.05
     },
     "data": {
+      "data_dir": "data",
+      "preprocessed_dir": "preprocessed_data",
+      "metadata_dir": "preprocessed_data/metadata",
+      "train_csv": "train_samples.csv",
+      "val_csv": "val_samples.csv",
+      "test_csv": "test_samples.csv",
+      "num_workers": 6,
+      "pin_memory": true,
+      "prefetch_factor": 4,
+      "persistent_workers": true,
+      "positive_negative_ratio": 15,
       "train_subsets": [
         0,
         1,
@@ -28,64 +64,161 @@
       "test_subsets": [
         4
       ],
-      "num_workers": 16
+      "augmentation": {
+        "enabled": true,
+        "rotation": true,
+        "rotation_range": 15,
+        "flip": true,
+        "flip_prob": 0.5,
+        "noise": true,
+        "noise_prob": 0.3,
+        "noise_std": 0.05,
+        "intensity_shift": 0.1,
+        "contrast_range": [
+          0.9,
+          1.1
+        ],
+        "elastic_prob": 0.2,
+        "elastic_alpha": 100,
+        "elastic_sigma": 10
+      }
+    },
+    "validation": {
+      "validate_every": 1,
+      "primary_metric": "auc_roc",
+      "optimize_threshold": true,
+      "target_sensitivity": 0.9
+    },
+    "evaluation": {
+      "compute_froc": true,
+      "froc_fp_rates": [
+        0.5,
+        1,
+        2,
+        4,
+        8
+      ],
+      "compute_calibration": true,
+      "calibration_bins": 15,
+      "compute_uncertainty": false,
+      "mc_dropout_passes": 5,
+      "save_plots": true,
+      "plot_formats": [
+        "png",
+        "pdf"
+      ]
     },
     "logging": {
-      "log_dir": "experiments/baseline_resnet2d18/logs",
-      "checkpoint_dir": "experiments/baseline_resnet2d18/checkpoints"
+      "use_wandb": false,
+      "use_tensorboard": true,
+      "log_interval": 10,
+      "save_interval": 5,
+      "keep_last_n": 3,
+      "save_best": true,
+      "checkpoint_dir": "experiments/baseline_resnet2d18/checkpoints",
+      "log_dir": "experiments/baseline_resnet2d18/logs"
     },
     "paths": {
+      "data_root": "data",
+      "output_root": "results",
+      "model_save_dir": "experiments/baseline_resnet2d18/checkpoints",
       "log_dir": "experiments/baseline_resnet2d18/logs",
-      "model_save_dir": "experiments/baseline_resnet2d18/checkpoints"
+      "figures_dir": "results/figures"
+    },
+    "gpu": {
+      "use_multi_gpu": true,
+      "device_ids": [
+        0,
+        1
+      ],
+      "strategy": "none",
+      "empty_cache_every": 10
     }
   },
   "results": {
     "experiment": "baseline_resnet2d18",
-    "best_epoch": 42,
-    "best_val_auc": 0.0,
+    "best_epoch": 38,
+    "best_val_auc": 0.9691557396994119,
     "test_results": {
-      "auc_roc": 0.9862633900441085,
-      "auc_pr": 0.8861571407160562,
-      "f1_score": 0.7236467236467237,
-      "accuracy": 0.9560688405797102,
-      "sensitivity": 0.9202898550724637,
-      "specificity": 0.9584541062801932,
-      "precision": 0.596244131455399,
-      "true_positives": 127,
-      "false_positives": 86,
-      "true_negatives": 1984,
-      "false_negatives": 11,
+      "auc_roc": 0.9705687817702927,
+      "auc_pr": 0.22903928014993968,
+      "f1_score": 0.046479521398987575,
+      "accuracy": 0.8999251370475018,
+      "sensitivity": 0.9099099099099099,
+      "specificity": 0.899898300159814,
+      "precision": 0.02384887839433294,
+      "fp_per_scan": 2.9950010867202783,
+      "true_positives": 101,
+      "false_positives": 4134,
+      "true_negatives": 37164,
+      "false_negatives": 10,
       "threshold": 0.5,
-      "sensitivity_at_0.5fp": 0.10144927536231885,
-      "sensitivity_at_1fp": 0.10144927536231885,
-      "sensitivity_at_2fp": 0.2971014492753623,
-      "sensitivity_at_4fp": 0.5217391304347826,
-      "sensitivity_at_8fp": 0.7028985507246377,
-      "ece": 0.4254753737291996,
+      "sensitivity_at_0.5fp": 0.0,
+      "sensitivity_at_1fp": 0.0,
+      "sensitivity_at_2fp": 0.0,
+      "sensitivity_at_4fp": 0.0,
+      "sensitivity_at_8fp": 0.05405405405405406,
+      "ece": 0.34062217406446516,
       "uncertainty": {
-        "mean_confidence": 0.9994142055511475,
-        "mean_confidence_correct": 0.9994369745254517,
-        "mean_confidence_incorrect": 0.9989852905273438,
-        "uncertain_cases_ratio": 0.0,
-        "uncertain_cases_count": 0,
-        "misclassified_flagged_by_uncertainty": 0.0
+        "mean_confidence": 0.9912476539611816,
+        "mean_confidence_correct": 0.9909908175468445,
+        "mean_confidence_incorrect": 0.9919082522392273,
+        "uncertain_cases_ratio": 2.4149339515564248e-05,
+        "uncertain_cases_count": 1,
+        "misclassified_flagged_by_uncertainty": 8.62663906142167e-05
       }
     },
     "config": {
       "experiment_name": "baseline_resnet2d18",
-      "description": "Standard 2D ResNet-18 (slice-level) baseline",
+      "description": "Standard 2D ResNet-18 (slice-level) baseline \u2014 comparison to 3D + context DCA-Net",
       "model": {
         "type": "resnet2d18",
         "input_size": 64,
         "num_classes": 1
       },
       "training": {
-        "num_epochs": 60,
-        "batch_size": 16,
-        "learning_rate": 0.0001,
-        "weight_decay": 1e-05
+        "num_epochs": 150,
+        "early_stopping_patience": 40,
+        "batch_size": 64,
+        "learning_rate": 0.0003,
+        "weight_decay": 1e-05,
+        "warmup_epochs": 5,
+        "optimizer": "AdamW",
+        "scheduler": "CosineAnnealingWarmRestarts",
+        "scheduler_T0": 20,
+        "scheduler_Tmult": 2,
+        "use_amp": true,
+        "gradient_clip": 1.0,
+        "gradient_accumulation_steps": 1,
+        "use_data_parallel": true,
+        "device_ids": [
+          0,
+          1
+        ],
+        "curriculum": {
+          "enabled": false
+        },
+        "loss_weights": {
+          "bce": 0.5,
+          "focal": 0.5,
+          "uncertainty": 0.0
+        },
+        "focal_gamma": 2.5,
+        "focal_alpha": 0.995,
+        "label_smoothing": 0.05
       },
       "data": {
+        "data_dir": "data",
+        "preprocessed_dir": "preprocessed_data",
+        "metadata_dir": "preprocessed_data/metadata",
+        "train_csv": "train_samples.csv",
+        "val_csv": "val_samples.csv",
+        "test_csv": "test_samples.csv",
+        "num_workers": 6,
+        "pin_memory": true,
+        "prefetch_factor": 4,
+        "persistent_workers": true,
+        "positive_negative_ratio": 15,
         "train_subsets": [
           0,
           1,
@@ -97,15 +230,75 @@
         "test_subsets": [
           4
         ],
-        "num_workers": 16
+        "augmentation": {
+          "enabled": true,
+          "rotation": true,
+          "rotation_range": 15,
+          "flip": true,
+          "flip_prob": 0.5,
+          "noise": true,
+          "noise_prob": 0.3,
+          "noise_std": 0.05,
+          "intensity_shift": 0.1,
+          "contrast_range": [
+            0.9,
+            1.1
+          ],
+          "elastic_prob": 0.2,
+          "elastic_alpha": 100,
+          "elastic_sigma": 10
+        }
+      },
+      "validation": {
+        "validate_every": 1,
+        "primary_metric": "auc_roc",
+        "optimize_threshold": true,
+        "target_sensitivity": 0.9
+      },
+      "evaluation": {
+        "compute_froc": true,
+        "froc_fp_rates": [
+          0.5,
+          1,
+          2,
+          4,
+          8
+        ],
+        "compute_calibration": true,
+        "calibration_bins": 15,
+        "compute_uncertainty": false,
+        "mc_dropout_passes": 5,
+        "save_plots": true,
+        "plot_formats": [
+          "png",
+          "pdf"
+        ]
       },
       "logging": {
-        "log_dir": "experiments/baseline_resnet2d18/logs",
-        "checkpoint_dir": "experiments/baseline_resnet2d18/checkpoints"
+        "use_wandb": false,
+        "use_tensorboard": true,
+        "log_interval": 10,
+        "save_interval": 5,
+        "keep_last_n": 3,
+        "save_best": true,
+        "checkpoint_dir": "experiments/baseline_resnet2d18/checkpoints",
+        "log_dir": "experiments/baseline_resnet2d18/logs"
       },
       "paths": {
+        "data_root": "data",
+        "output_root": "results",
+        "model_save_dir": "experiments/baseline_resnet2d18/checkpoints",
         "log_dir": "experiments/baseline_resnet2d18/logs",
-        "model_save_dir": "experiments/baseline_resnet2d18/checkpoints"
+        "figures_dir": "results/figures"
+      },
+      "gpu": {
+        "use_multi_gpu": true,
+        "device_ids": [
+          0,
+          1
+        ],
+        "strategy": "none",
+        "empty_cache_every": 10
       }
     }
   }

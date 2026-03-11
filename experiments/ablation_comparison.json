@@ -1,0 +1,61 @@
+{
+  "full_model_auc": 0.9582273687315094,
+  "results": [
+    {
+      "name": "Full Model (DCA-Net)",
+      "experiment": "full_model",
+      "auc_roc": 0.9582273687315094,
+      "sensitivity": 0.8918918918918919,
+      "specificity": 0.8715434161460603,
+      "found": true
+    },
+    {
+      "name": "Ablation: No Context Stream",
+      "experiment": "ablation_no_context",
+      "auc_roc": 0.9429885355353902,
+      "sensitivity": 0.7657657657657657,
+      "specificity": 0.9440408736500557,
+      "found": true
+    },
+    {
+      "name": "Ablation: No Attention",
+      "experiment": "ablation_no_attention",
+      "auc_roc": 0.9445271219207003,
+      "sensitivity": 0.6126126126126126,
+      "specificity": 0.9728316141217492,
+      "found": true
+    },
+    {
+      "name": "Ablation: No Curriculum",
+      "experiment": "ablation_no_curriculum",
+      "auc_roc": 0.9471221912018076,
+      "sensitivity": 0.8018018018018018,
+      "specificity": 0.9453726572715385,
+      "found": true
+    },
+    {
+      "name": "Ablation: No Uncertainty",
+      "experiment": "ablation_no_uncertainty",
+      "auc_roc": 0.9488157705868007,
+      "sensitivity": 0.7837837837837838,
+      "specificity": 0.9369703133323648,
+      "found": true
+    },
+    {
+      "name": "Baseline: 3D ResNet-18",
+      "experiment": "baseline_resnet3d18",
+      "auc_roc": 0.9917994414580207,
+      "sensitivity": 0.990990990990991,
+      "specificity": 0.89229502639353,
+      "found": true
+    },
+    {
+      "name": "Baseline: 2D ResNet-18",
+      "experiment": "baseline_resnet2d18",
+      "auc_roc": 0.9705687817702927,
+      "sensitivity": 0.9099099099099099,
+      "specificity": 0.899898300159814,
+      "found": true
+    }
+  ]
+}

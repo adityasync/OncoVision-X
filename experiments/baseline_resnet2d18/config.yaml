@@ -1,27 +1,113 @@
 data:
-  num_workers: 16
+  augmentation:
+    contrast_range:
+    - 0.9
+    - 1.1
+    elastic_alpha: 100
+    elastic_prob: 0.2
+    elastic_sigma: 10
+    enabled: true
+    flip: true
+    flip_prob: 0.5
+    intensity_shift: 0.1
+    noise: true
+    noise_prob: 0.3
+    noise_std: 0.05
+    rotation: true
+    rotation_range: 15
+  data_dir: data
+  metadata_dir: preprocessed_data/metadata
+  num_workers: 6
+  persistent_workers: true
+  pin_memory: true
+  positive_negative_ratio: 15
+  prefetch_factor: 4
+  preprocessed_dir: preprocessed_data
+  test_csv: test_samples.csv
   test_subsets:
   - 4
+  train_csv: train_samples.csv
   train_subsets:
   - 0
   - 1
   - 2
+  val_csv: val_samples.csv
   val_subsets:
   - 3
-description: Standard 2D ResNet-18 (slice-level) baseline
+description: "Standard 2D ResNet-18 (slice-level) baseline \u2014 comparison to 3D\
+  \ + context DCA-Net"
+evaluation:
+  calibration_bins: 15
+  compute_calibration: true
+  compute_froc: true
+  compute_uncertainty: false
+  froc_fp_rates:
+  - 0.5
+  - 1
+  - 2
+  - 4
+  - 8
+  mc_dropout_passes: 5
+  plot_formats:
+  - png
+  - pdf
+  save_plots: true
 experiment_name: baseline_resnet2d18
+gpu:
+  device_ids:
+  - 0
+  - 1
+  empty_cache_every: 10
+  strategy: none
+  use_multi_gpu: true
 logging:
   checkpoint_dir: experiments/baseline_resnet2d18/checkpoints
+  keep_last_n: 3
   log_dir: experiments/baseline_resnet2d18/logs
+  log_interval: 10
+  save_best: true
+  save_interval: 5
+  use_tensorboard: true
+  use_wandb: false
 model:
   input_size: 64
   num_classes: 1
   type: resnet2d18
 paths:
+  data_root: data
+  figures_dir: results/figures
   log_dir: experiments/baseline_resnet2d18/logs
   model_save_dir: experiments/baseline_resnet2d18/checkpoints
+  output_root: results
 training:
-  batch_size: 16
-  learning_rate: 0.0001
-  num_epochs: 60
+  batch_size: 64
+  curriculum:
+    enabled: false
+  device_ids:
+  - 0
+  - 1
+  early_stopping_patience: 40
+  focal_alpha: 0.995
+  focal_gamma: 2.5
+  gradient_accumulation_steps: 1
+  gradient_clip: 1.0
+  label_smoothing: 0.05
+  learning_rate: 0.0003
+  loss_weights:
+    bce: 0.5
+    focal: 0.5
+    uncertainty: 0.0
+  num_epochs: 150
+  optimizer: AdamW
+  scheduler: CosineAnnealingWarmRestarts
+  scheduler_T0: 20
+  scheduler_Tmult: 2
+  use_amp: true
+  use_data_parallel: true
+  warmup_epochs: 5
   weight_decay: 1.0e-05
+validation:
+  optimize_threshold: true
+  primary_metric: auc_roc
+  target_sensitivity: 0.9
+  validate_every: 1
