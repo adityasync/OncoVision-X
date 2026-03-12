@@ -23,9 +23,20 @@ To overcome the dichotomy between 2D computational efficiency and 3D spatial fid
 
 Rather than forcing a single network to understand both microscopic texture and macroscopic organ placement, DCA-Net splits the analytical load between two highly specialized processing streams that mirror the holistic diagnostic process of human radiologists.
 
+```mermaid
+graph TD
+    A[Input CT Data] --> B[Nodule Stream <br> 2.5D Extractor]
+    A --> C[Context Stream <br> 3D Extractor]
+    
+    B --> D[Multi-Head Attention Fusion]
+    C --> D
+    
+    D --> E[Prediction Head]
+    E --> F[Malignancy Probability]
+    E --> G[Monte Carlo Dropout]
+    G --> H[Confidence / Uncertainty Score]
+```
 <p align="center">
-  <img src="../figures/architecture_diagram.png" width="80%" title="DCA-Net Architecture">
-  <br>
   <em>Fig. 1. The structural mapping of the Dual-Context Attention Network, emphasizing the concurrent 2.5D nodule stream and 3D context stream prior to final fusion.</em>
 </p>
 
