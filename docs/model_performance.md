@@ -71,6 +71,16 @@ The model integrates Grad-CAM++ to highlight exactly what physiological characte
 
 Beyond the performance of the full DCA-Net baseline, exhaustive empirical ablation tests were conducted to mathematically defend the presence of every major module in the network. These extensive tests explicitly isolate the performance impact (and subsequent clinical danger) of removing core features.
 
+### Ablation Performance Overview
+
+<p align="center">
+  <img src="../figures/roc_comparison.png" width="48%" title="ROC Comparison">
+  <img src="../figures/ablation_contributions.png" width="48%" title="Ablation Contributions">
+</p>
+<p align="center">
+  <img src="../figures/sensitivity_specificity_scatter.png" width="60%" title="Sensitivity vs Specificity Scatter">
+</p>
+
 Read the deep-dive research methodology reports here:
 1. **[The Indispensable Role of 3D Context Representation](ablations/no_context.md)**
 2. **[The Necessity of Multi-Head Attention Filtering](ablations/no_attention.md)**

@@ -58,12 +58,22 @@ For an in-depth look at all generated metrics, ROC/PR curves, uncertainty distri
 **[View Full Model Performance & Charts](docs/model_performance.md)**
 
 ### Ablation Studies & Architectural Proofs
+
 To aggressively validate the architectural choices of the DCA-Net framework against standard baselines, four extensive empirical ablation studies were conducted on the LUNA16 cohort. These studies mathematically isolate and quantify the exact clinical necessity of specific network modules:
+
+<p align="center">
+  <img src="figures/roc_comparison.png" width="48%" title="ROC Comparison">
+  <img src="figures/ablation_contributions.png" width="48%" title="Ablation Contributions">
+</p>
+<p align="center">
+  <img src="figures/sensitivity_specificity_scatter.png" width="60%" title="Sensitivity vs Specificity Scatter">
+</p>
 
 * **[No Context Stream Ablation](docs/ablations/no_context.md)**: Proves the necessity of volumetric 3D analysis to prevent False Positives.
 * **[No Attention Module Ablation](docs/ablations/no_attention.md)**: Demonstrates the "Feature Drowning" paradox when fusing multi-dimensional streams without intelligent gating.
 * **[No Curriculum Learning Ablation](docs/ablations/no_curriculum.md)**: Highlights the regularizing effect of phased data introduction against severe medical class imbalances.
 * **[No Uncertainty Tracking Ablation](docs/ablations/no_uncertainty.md)**: Unpacks the profound regularizing multi-task benefits of epistemic doubt calculation.
+* **[Comparative Analysis vs Baselines (Research Paper Draft)](docs/comparative_analysis.md)**: A comprehensive research paper draft comparing the DCA-Net framework to standard ResNet 2D/3D baselines and exploring model complexity versus dataset scale.
 
 ## Installation and Requirements
 
