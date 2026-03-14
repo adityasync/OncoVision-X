@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="logo.png" alt="OncoVision-X Logo" width="300" />
+</div>
+
 # OncoVision-X
 
 OncoVision-X is a memory-efficient CAD (Computer-Aided Diagnosis) system designed for automated lung nodule malignancy classification. Built upon the LUNA16 benchmark dataset, it utilizes the **Dual-Context Attention Network (DCA-Net)** to perform classification with high precision and clinical uncertainty quantification. 

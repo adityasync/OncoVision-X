@@ -1,0 +1,57 @@
+# ============================================================
+# Malignancy Classifier — Training Configuration
+# ============================================================
+# 3D ResNet classifier for nodule malignancy (demo feature only)
+# NOT part of the research paper.
+
+experiment_name: "malignancy_classifier"
+description: "3D ResNet malignancy classifier trained on LIDC-IDRI annotations"
+
+# ============================================================
+# MODEL
+# ============================================================
+model:
+  type: "malignancy_classifier"
+  block1_channels: 64
+  block2_channels: 128
+  block3_channels: 256
+  blocks_per_stage: 2
+  hidden_dim: 128
+  num_classes: 2          # Binary: benign vs malignant
+  dropout: 0.5
+  head_dropout: 0.3
+
+# ============================================================
+# TRAINING
+# ============================================================
+training:
+  num_epochs: 50
+  batch_size: 32
+  learning_rate: 0.0001   # 1e-4
+  weight_decay: 0.00001   # 1e-5
+  optimizer: "AdamW"
+  scheduler: "CosineAnnealingLR"
+  scheduler_T_max: 50     # Same as num_epochs
+  gradient_clip: 1.0
+  use_amp: true
+  early_stopping_patience: 15
+
+# ============================================================
+# DATA
+# ============================================================
+data:
+  # Path to LIDC annotations CSV (must have 'nodule_id' and 'malignancy' columns)
+  annotations_csv: "data/LIDC_annotations.csv"
+  # Directory containing {nodule_id}.npy patch files (64x64x64)
+  patches_dir: "data/nodule_patches"
+  val_ratio: 0.2
+  num_workers: 4
+
+# ============================================================
+# LOGGING & CHECKPOINTING
+# ============================================================
+logging:
+  experiment_dir: "experiments/malignancy_classifier"
+  checkpoint_dir: "experiments/malignancy_classifier/checkpoints"
+  log_interval: 10
+  save_best: true

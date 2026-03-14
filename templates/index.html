@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OncoVision-X | AI-Powered Lung Cancer Detection & Risk Assessment</title>
+    <meta name="description" content="OncoVision-X: Advanced AI system for lung nodule detection and cancer risk assessment using Dual-Context Attention Networks.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ── Reset & Base ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: rgba(17, 24, 39, 0.7);
+            --bg-glass: rgba(255, 255, 255, 0.04);
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-purple: #8b5cf6;
+            --risk-low: #10b981;
+            --risk-low-bg: rgba(16, 185, 129, 0.12);
+            --risk-moderate: #f59e0b;
+            --risk-moderate-bg: rgba(245, 158, 11, 0.12);
+            --risk-high: #ef4444;
+            --risk-high-bg: rgba(239, 68, 68, 0.12);
+            --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #06b6d4 100%);
+            --gradient-dark: linear-gradient(180deg, #0a0e1a 0%, #111827 100%);
+            --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+            --shadow-glow: 0 0 40px rgba(59, 130, 246, 0.15);
+            --radius: 16px;
+            --radius-sm: 10px;
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--gradient-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── Ambient Background ── */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+                        radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+                        radial-gradient(ellipse at 50% 80%, rgba(6, 182, 212, 0.05) 0%, transparent 50%);
+            z-index: 0;
+            animation: ambientShift 20s ease-in-out infinite alternate;
+        }
+
+        @keyframes ambientShift {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(-3%, 3%) rotate(2deg); }
+        }
+
+        /* ── Layout ── */
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ── Header ── */
+        header {
+            padding: 48px 0 32px;
+            text-align: center;
+        }
+
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .logo-icon {
+            width: 52px;
+            height: 52px;
+            background: var(--gradient-primary);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            box-shadow: var(--shadow-glow);
+        }
+
+        .logo-text {
+            font-size: 32px;
+            font-weight: 800;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.5px;
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-size: 16px;
+            font-weight: 400;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        /* ── Glass Card ── */
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius);
+            padding: 32px;
+            margin-bottom: 24px;
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.12);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title .icon {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+        }
+
+        /* ── Upload Form ── */
+        .upload-zone {
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-sm);
+            padding: 48px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .upload-zone:hover,
+        .upload-zone.drag-over {
+            border-color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.04);
+        }
+
+        .upload-zone .upload-icon {
+            font-size: 42px;
+            margin-bottom: 12px;
+            opacity: 0.7;
+        }
+
+        .upload-zone p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .upload-zone .formats {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .upload-zone input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .file-selected {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            background: rgba(59, 130, 246, 0.08);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: var(--radius-sm);
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: var(--accent-blue);
+        }
+
+        .file-selected.visible { display: flex; }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-glass);
+            background: var(--bg-glass);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 14px;
+            transition: var(--transition);
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+
+        .form-group input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: var(--radius-sm);
+            background: var(--gradient-primary);
+            color: white;
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 30px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-demo {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-sm);
+            background: var(--bg-glass);
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-top: 12px;
+        }
+
+        .btn-demo:hover {
+            border-color: var(--accent-purple);
+            color: var(--accent-purple);
+            background: rgba(139, 92, 246, 0.06);
+        }
+
+        /* ── Loading ── */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 48px 0;
+        }
+
+        .loading.active { display: block; }
+
+        .pulse-ring {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px solid var(--accent-blue);
+            margin: 0 auto 20px;
+            animation: pulseRing 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulseRing {
+            0% { transform: scale(0.8); opacity: 1; border-color: var(--accent-blue); }
+            50% { transform: scale(1.1); opacity: 0.5; border-color: var(--accent-purple); }
+            100% { transform: scale(0.8); opacity: 1; border-color: var(--accent-blue); }
+        }
+
+        .loading p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            animation: fadeInOut 2s ease-in-out infinite;
+        }
+
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        /* ── Results ── */
+        #results { display: none; }
+        #results.visible { display: block; animation: slideUp 0.5s ease; }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Risk Badge */
+        .risk-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 20px;
+            border-radius: 100px;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .risk-badge.low {
+            background: var(--risk-low-bg);
+            color: var(--risk-low);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+        }
+
+        .risk-badge.moderate, .risk-badge.medium {
+            background: var(--risk-moderate-bg);
+            color: var(--risk-moderate);
+            border: 1px solid rgba(245, 158, 11, 0.25);
+        }
+
+        .risk-badge.high {
+            background: var(--risk-high-bg);
+            color: var(--risk-high);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+        }
+
+        /* Overview Card */
+        .overview {
+            text-align: center;
+            padding: 40px 32px;
+        }
+
+        .overview .risk-score {
+            font-size: 64px;
+            font-weight: 800;
+            margin: 16px 0 4px;
+            letter-spacing: -2px;
+        }
+
+        .overview .risk-score.low { color: var(--risk-low); }
+        .overview .risk-score.moderate, .overview .risk-score.medium { color: var(--risk-moderate); }
+        .overview .risk-score.high { color: var(--risk-high); }
+
+        .overview .risk-label {
+            font-size: 13px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 20px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border-glass);
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 2px;
+        }
+
+        /* Nodule Cards */
+        .nodule-card {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-sm);
+            padding: 20px;
+            margin-bottom: 12px;
+            transition: var(--transition);
+        }
+
+        .nodule-card:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateX(4px);
+        }
+
+        .nodule-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .nodule-id {
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .nodule-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .detail {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .detail-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .detail-value {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* Probability Bar */
+        .prob-bar-container {
+            grid-column: 1 / -1;
+            margin-top: 6px;
+        }
+
+        .prob-bar-bg {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+
+        .prob-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 1s ease;
+        }
+
+        .prob-bar-fill.low { background: var(--risk-low); }
+        .prob-bar-fill.moderate, .prob-bar-fill.medium { background: var(--risk-moderate); }
+        .prob-bar-fill.high { background: var(--risk-high); }
+
+        /* CT Visualization */
+        .viz-container { margin-bottom: 24px; }
+        .viz-container img {
+            width: 100%;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-glass);
+        }
+        .viz-container .viz-caption {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        /* Timing */
+        .timing-row {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            padding-top: 12px;
+            margin-top: 12px;
+            border-top: 1px solid var(--border-glass);
+        }
+        .timing-item {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .timing-item span {
+            color: var(--accent-cyan);
+            font-weight: 600;
+        }
+
+        /* Analyze Again */
+        .btn-again {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 32px;
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-sm);
+            background: var(--bg-glass);
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .btn-again:hover {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        /* Recommendation */
+        .recommendation {
+            padding: 20px 24px;
+            border-left: 3px solid var(--accent-blue);
+        }
+
+        .recommendation h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .recommendation p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        /* ── Footer ── */
+        footer {
+            text-align: center;
+            padding: 32px 0 48px;
+        }
+
+        .disclaimer {
+            background: rgba(239, 68, 68, 0.06);
+            border: 1px solid rgba(239, 68, 68, 0.15);
+            border-radius: var(--radius-sm);
+            padding: 16px 24px;
+            margin-bottom: 24px;
+        }
+
+        .disclaimer p {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .disclaimer strong {
+            color: var(--risk-high);
+        }
+
+        footer .credits {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 640px) {
+            header { padding: 32px 0 24px; }
+            .logo-text { font-size: 24px; }
+            .card { padding: 24px; }
+            .form-row { grid-template-columns: 1fr; }
+            .overview .risk-score { font-size: 48px; }
+            .stat-row { gap: 24px; }
+            .nodule-details { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="logo">
+                <div class="logo-icon">🫁</div>
+                <span class="logo-text">OncoVision-X</span>
+            </div>
+            <p>AI-Powered Lung Cancer Detection &amp; Risk Assessment powered by Dual-Context Attention Networks</p>
+        </header>
+
+        <!-- Upload Card -->
+        <div class="card" id="uploadCard">
+            <div class="card-title">
+                <span class="icon">📤</span>
+                Upload CT Scan
+            </div>
+
+            <form id="uploadForm" enctype="multipart/form-data">
+                <div class="upload-zone" id="uploadZone">
+                    <div class="upload-icon">🔬</div>
+                    <p>Drop CT scan here or click to browse</p>
+                    <span class="formats">Supported: .mhd, .nii.gz, .nii, .npy, .npz</span>
+                    <input type="file" name="ct_scan" id="fileInput" accept=".mhd,.nii,.nii.gz,.npy,.npz">
+                </div>
+
+                <div class="file-selected" id="fileSelected">
+                    <span>📎</span>
+                    <span id="fileName">No file selected</span>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="patientId">Patient ID</label>
+                        <input type="text" id="patientId" name="patient_id" placeholder="e.g. PT-2026-0342">
+                    </div>
+                    <div class="form-group">
+                        <label for="scanDate">Scan Date</label>
+                        <input type="date" id="scanDate" name="scan_date">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary" id="analyzeBtn">
+                    Analyze Scan
+                </button>
+
+                <button type="button" class="btn-demo" id="demoBtn">
+                    ✨ Run Demo with Simulated Data
+                </button>
+            </form>
+        </div>
+
+        <!-- Loading -->
+        <div class="loading" id="loading">
+            <div class="pulse-ring"></div>
+            <p>Analyzing CT scan with DCA-Net...</p>
+        </div>
+
+        <!-- Results -->
+        <div id="results">
+            <!-- Overview -->
+            <div class="card overview" id="overviewCard">
+                <div id="riskBadge" class="risk-badge">—</div>
+                <div id="riskScoreDisplay" class="risk-score">—</div>
+                <div class="risk-label">Risk Score</div>
+
+                <div class="stat-row">
+                    <div class="stat">
+                        <div class="stat-value" id="noduleCount">0</div>
+                        <div class="stat-label">Nodules Found</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="patientIdDisplay">—</div>
+                        <div class="stat-label">Patient ID</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="scanDateDisplay">—</div>
+                        <div class="stat-label">Scan Date</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CT Visualization -->
+            <div class="card" id="vizCard" style="display:none;">
+                <div class="card-title">
+                    <span class="icon">🖼️</span>
+                    CT Scan Visualization
+                </div>
+                <div class="viz-container">
+                    <img id="vizImage" src="" alt="CT scan with detected nodules">
+                    <p class="viz-caption">Detected nodules highlighted — <span style="color:#ef4444">●</span> HIGH <span style="color:#f59e0b">●</span> MEDIUM <span style="color:#10b981">●</span> LOW</p>
+                </div>
+            </div>
+
+            <!-- Nodule Details -->
+            <div class="card" id="nodulesCard">
+                <div class="card-title">
+                    <span class="icon">🔍</span>
+                    Detected Nodules
+                </div>
+                <div id="nodulesList"></div>
+            </div>
+
+            <!-- Recommendation -->
+            <div class="card recommendation" id="recommendationCard">
+                <h4>📋 Clinical Recommendation</h4>
+                <p id="recommendationText">—</p>
+            </div>
+
+            <div style="text-align:center">
+                <button class="btn-again" id="againBtn">← Analyze Another Scan</button>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer>
+            <div class="disclaimer">
+                <p><strong>⚠ Research Prototype</strong> — This system is a research demonstration and is NOT approved for clinical use. All results must be reviewed by a qualified radiologist. Do not make clinical decisions based solely on this output.</p>
+            </div>
+            <p class="credits">OncoVision-X &mdash; Dual-Context Attention Network &mdash; LUNA16 Dataset</p>
+        </footer>
+    </div>
+
+    <script>
+        // ── File Upload UX ──
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileSelected = document.getElementById('fileSelected');
+        const fileName = document.getElementById('fileName');
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                fileName.textContent = fileInput.files[0].name;
+                fileSelected.classList.add('visible');
+            }
+        });
+
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('drag-over');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('drag-over');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('drag-over');
+            if (e.dataTransfer.files.length > 0) {
+                fileInput.files = e.dataTransfer.files;
+                fileName.textContent = e.dataTransfer.files[0].name;
+                fileSelected.classList.add('visible');
+            }
+        });
+
+        // ── Form Submit (Real Predict) ──
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            await analyze('/api/analyze', formData);
+        });
+
+        // ── Demo Button ──
+        document.getElementById('demoBtn').addEventListener('click', async () => {
+            const formData = new FormData();
+            formData.append('patient_id', document.getElementById('patientId').value || 'DEMO-001');
+            formData.append('scan_date', document.getElementById('scanDate').value || new Date().toISOString().slice(0, 10));
+            await analyze('/api/demo-analyze', formData);
+        });
+
+        // ── Analyze Again ──
+        document.getElementById('againBtn').addEventListener('click', () => {
+            document.getElementById('results').classList.remove('visible');
+            document.getElementById('uploadCard').style.display = 'block';
+        });
+
+        // ── Analyze ──
+        async function analyze(endpoint, formData) {
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+            const uploadCard = document.getElementById('uploadCard');
+
+            // Show loading
+            uploadCard.style.display = 'none';
+            loading.classList.add('active');
+            results.classList.remove('visible');
+
+            try {
+                const response = await fetch(endpoint, { method: 'POST', body: formData });
+                const data = await response.json();
+
+                if (data.status === 'error') {
+                    alert('Error: ' + data.message);
+                    uploadCard.style.display = 'block';
+                    loading.classList.remove('active');
+                    return;
+                }
+
+                displayResults(data);
+            } catch (err) {
+                alert('Network error: ' + err.message);
+                uploadCard.style.display = 'block';
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+
+        // ── Display Results ──
+        function displayResults(data) {
+            const analysis = data.analysis;
+            const riskClass = analysis.overall_risk.toLowerCase();
+
+            // Overview
+            const badge = document.getElementById('riskBadge');
+            badge.className = 'risk-badge ' + riskClass;
+            badge.textContent = analysis.overall_risk + ' RISK';
+
+            const score = document.getElementById('riskScoreDisplay');
+            score.className = 'risk-score ' + riskClass;
+            animateNumber(score, analysis.risk_score, '%');
+
+            document.getElementById('noduleCount').textContent = analysis.num_nodules_detected;
+            document.getElementById('patientIdDisplay').textContent = data.patient_id || '—';
+            document.getElementById('scanDateDisplay').textContent = data.scan_date || '—';
+
+            // Nodules
+            const list = document.getElementById('nodulesList');
+            list.innerHTML = '';
+
+            analysis.nodules.forEach(nodule => {
+                const risk = nodule.risk_level.toLowerCase();
+                const card = document.createElement('div');
+                card.className = 'nodule-card';
+                card.innerHTML = `
+                    <div class="nodule-header">
+                        <span class="nodule-id">Nodule #${nodule.nodule_id}</span>
+                        <span class="risk-badge ${risk}">${nodule.risk_level}</span>
+                    </div>
+                    <div class="nodule-details">
+                        <div class="detail">
+                            <span class="detail-label">Location</span>
+                            <span class="detail-value">${nodule.location || 'N/A'}</span>
+                        </div>
+                        <div class="detail">
+                            <span class="detail-label">Detection Confidence</span>
+                            <span class="detail-value">${nodule.detection_confidence != null ? nodule.detection_confidence + '%' : 'N/A'}</span>
+                        </div>
+                        <div class="detail">
+                            <span class="detail-label">Malignancy Probability</span>
+                            <span class="detail-value" style="color: var(--risk-${risk}); font-weight: 600;">${nodule.malignancy_probability}%</span>
+                        </div>
+                        <div class="detail">
+                            <span class="detail-label">Recommendation</span>
+                            <span class="detail-value">${nodule.recommendation}</span>
+                        </div>
+                        <div class="prob-bar-container">
+                            <span class="detail-label">Malignancy Score</span>
+                            <div class="prob-bar-bg">
+                                <div class="prob-bar-fill ${risk}" style="width: 0%;" data-width="${nodule.malignancy_probability}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+
+            // Animate probability bars
+            setTimeout(() => {
+                document.querySelectorAll('.prob-bar-fill').forEach(bar => {
+                    bar.style.width = bar.dataset.width;
+                });
+            }, 100);
+
+            // Visualization
+            const vizCard = document.getElementById('vizCard');
+            if (data.visualization) {
+                document.getElementById('vizImage').src = 'data:image/png;base64,' + data.visualization;
+                vizCard.style.display = 'block';
+            } else {
+                vizCard.style.display = 'none';
+            }
+
+            // Recommendation
+            document.getElementById('recommendationText').textContent = data.next_steps;
+
+            // Timing
+            if (data.timing) {
+                let timingHtml = '<div class="timing-row">';
+                if (data.timing.preprocess_sec != null) timingHtml += `<div class="timing-item">Preprocess: <span>${data.timing.preprocess_sec}s</span></div>`;
+                if (data.timing.detect_sec != null) timingHtml += `<div class="timing-item">Detection: <span>${data.timing.detect_sec}s</span></div>`;
+                timingHtml += `<div class="timing-item">Total: <span>${data.timing.total_sec}s</span></div></div>`;
+                document.getElementById('recommendationCard').insertAdjacentHTML('beforeend', timingHtml);
+            }
+
+            // Show results
+            document.getElementById('results').classList.add('visible');
+        }
+
+        // ── Number Animation ──
+        function animateNumber(el, target, suffix) {
+            let current = 0;
+            const step = target / 40;
+            const interval = setInterval(() => {
+                current += step;
+                if (current >= target) {
+                    current = target;
+                    clearInterval(interval);
+                }
+                el.textContent = current.toFixed(1) + suffix;
+            }, 25);
+        }
+    </script>
+</body>
+</html>
