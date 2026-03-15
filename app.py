@@ -7,11 +7,11 @@ import tempfile
 from io import BytesIO
 from pathlib import Path
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='frontend')
 CORS(app)
 
 _system = None
@@ -133,7 +133,7 @@ def create_visualization(ct_scan, nodules):
 @app.route('/')
 def index():
     """Serve the UI."""
-    return render_template('index.html')
+    return send_from_directory(app.static_folder, 'index.html')
 
 
 @app.route('/health')
@@ -199,6 +199,12 @@ def analyze():
 
         traceback.print_exc()
         return jsonify({'error': str(exc)}), 500
+
+
+@app.route('/<path:path>')
+def frontend_files(path):
+    """Serve frontend assets from the frontend directory."""
+    return send_from_directory(app.static_folder, path)
 
 
 if __name__ == '__main__':

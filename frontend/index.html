@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OncoVision-X | Medical Imaging & AI Diagnostics</title>
+    <meta
+        name="description"
+        content="OncoVision-X delivers calm, precise AI-assisted CT scan analysis for lung nodule detection and risk assessment."
+    >
+    <link rel="icon" type="image/png" href="/assets/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet"
+    >
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="page-shell">
+        <header class="topbar">
+            <div class="topbar__inner">
+                <a class="brand" href="#top" aria-label="OncoVision-X">
+                    <img class="brand__wordmark" src="/assets/logo.png" alt="OncoVision-X">
+                </a>
+
+                <nav class="nav" aria-label="Primary">
+                    <a href="#analyze">Analyze</a>
+                    <a href="#results">Results</a>
+                    <a href="#about">System</a>
+                </nav>
+
+                <button class="profile-pill" type="button" aria-label="Clinical workspace">
+                    OV
+                </button>
+            </div>
+        </header>
+
+        <main id="top">
+            <section class="hero" id="analyze">
+                <div class="hero__copy reveal reveal--1">
+                    <p class="eyebrow">Clinical-grade AI review</p>
+                    <h1>Analyze CT scans with calm, precise clarity.</h1>
+                    <p class="hero__lede">
+                        Upload a chest CT volume and receive a focused risk summary, nodule breakdown,
+                        and three-view visualization designed for fast clinical review.
+                    </p>
+
+                    <div class="hero__actions">
+                        <a class="button button--primary" href="#uploadCard">Start Analysis</a>
+                        <button class="button button--secondary" id="sampleButton" type="button">
+                            View Sample Flow
+                        </button>
+                    </div>
+
+                    <div class="hero__stats">
+                        <article>
+                            <span>Input</span>
+                            <strong>.nii.gz, .mhd, .npz, .npy</strong>
+                        </article>
+                        <article>
+                            <span>Output</span>
+                            <strong>Risk, nodules, CT views</strong>
+                        </article>
+                        <article>
+                            <span>Experience</span>
+                            <strong>Minimal, mobile-ready</strong>
+                        </article>
+                    </div>
+                </div>
+
+                <div class="hero__panel reveal reveal--2" aria-hidden="true">
+                    <div class="hero__panel-glow"></div>
+                    <div class="hero__panel-card">
+                        <img class="hero__logo" src="/assets/logo.png" alt="">
+                        <div class="hero__panel-copy">
+                            <p>OncoVision-X</p>
+                            <span>Medical Imaging &amp; AI Diagnostics</span>
+                        </div>
+                    </div>
+                    <img class="hero__symbol" src="/assets/favicon.png" alt="">
+                </div>
+            </section>
+
+            <section class="workspace">
+                <div class="workspace__primary reveal reveal--3">
+                    <article class="card upload-card" id="uploadCard">
+                        <div class="section-heading">
+                            <p class="section-heading__eyebrow">Primary interaction</p>
+                            <h2>Analyze CT Scan</h2>
+                            <p>
+                                Drop a scan into the secure upload zone. The system accepts single-file
+                                uploads or paired MHD scans with their companion files.
+                            </p>
+                        </div>
+
+                        <form id="uploadForm" class="upload-form" enctype="multipart/form-data">
+                            <label class="upload-zone" id="uploadZone" for="ctScan">
+                                <input
+                                    id="ctScan"
+                                    name="ct_scan"
+                                    type="file"
+                                    accept=".nii,.gz,.nii.gz,.mhd,.raw,.npz,.npy"
+                                    multiple
+                                >
+                                <div class="upload-zone__icon">
+                                    <img src="/assets/favicon.png" alt="" aria-hidden="true">
+                                </div>
+                                <h3>Drop your CT scan here</h3>
+                                <p>or click to browse your files</p>
+                                <span>Supports `.nii.gz`, `.mhd`, `.npz`, `.npy`</span>
+                            </label>
+
+                            <div class="selected-file" id="selectedFile" hidden>
+                                <div>
+                                    <strong id="selectedFileName">No file selected</strong>
+                                    <p id="selectedFileMeta">Ready to analyze</p>
+                                </div>
+                                <button class="button button--primary" id="analyzeButton" type="submit">
+                                    Analyze Scan
+                                </button>
+                            </div>
+                        </form>
+
+                        <div class="status-banner status-banner--warning" id="errorBanner" hidden></div>
+                    </article>
+
+                    <article class="card loading-card" id="loadingCard" hidden>
+                        <div class="pulse-dot" aria-hidden="true"></div>
+                        <h2>Analyzing CT scan...</h2>
+                        <p id="loadingDetail">Preparing volumetric data</p>
+                        <div class="loading-steps" aria-hidden="true">
+                            <span class="is-active">Processing slices</span>
+                            <span>Detecting nodules</span>
+                            <span>Calculating risk</span>
+                        </div>
+                    </article>
+                </div>
+
+                <aside class="workspace__secondary reveal reveal--4" id="about">
+                    <article class="card info-card">
+                        <h3>Design Principles</h3>
+                        <ul class="info-list">
+                            <li>One clear primary action per screen.</li>
+                            <li>Large typography and controlled white space.</li>
+                            <li>Calm transitions that never add anxiety.</li>
+                            <li>Serious, clinical presentation without clutter.</li>
+                        </ul>
+                    </article>
+
+                    <article class="card info-card">
+                        <h3>System Snapshot</h3>
+                        <dl class="info-grid">
+                            <div>
+                                <dt>Risk levels</dt>
+                                <dd>Low, Medium, High</dd>
+                            </div>
+                            <div>
+                                <dt>Visualization</dt>
+                                <dd>Axial, coronal, sagittal</dd>
+                            </div>
+                            <div>
+                                <dt>Timings</dt>
+                                <dd>Preprocess, detect, total</dd>
+                            </div>
+                            <div>
+                                <dt>Output</dt>
+                                <dd>Nodule cards with recommendations</dd>
+                            </div>
+                        </dl>
+                    </article>
+                </aside>
+            </section>
+
+            <section class="results-section" id="results" hidden>
+                <article class="risk-banner risk-banner--low" id="riskBanner">
+                    <div class="risk-banner__identity">
+                        <div class="risk-banner__icon" id="riskIcon">L</div>
+                        <div>
+                            <p class="risk-banner__label" id="riskLabel">Patient Risk: LOW</p>
+                            <h2 id="riskSummary">Maximum malignancy: 0.0%</h2>
+                        </div>
+                    </div>
+                    <div class="risk-banner__metrics">
+                        <div>
+                            <span>Nodules</span>
+                            <strong id="noduleCount">0</strong>
+                        </div>
+                        <div>
+                            <span>Status</span>
+                            <strong id="analysisStatus">Ready</strong>
+                        </div>
+                    </div>
+                </article>
+
+                <div class="results-grid">
+                    <article class="card scan-panel">
+                        <div class="panel-header">
+                            <div>
+                                <p class="section-heading__eyebrow">Visualization</p>
+                                <h3>CT Scan Analysis</h3>
+                            </div>
+                            <button class="button button--ghost" id="exportButton" type="button">
+                                Export Image
+                            </button>
+                        </div>
+
+                        <div class="scan-stage" id="scanStage">
+                            <img
+                                id="scanImage"
+                                alt="CT scan visualization with annotated nodules"
+                                hidden
+                            >
+                            <div class="scan-placeholder" id="scanPlaceholder">
+                                <img src="/assets/logo.png" alt="" aria-hidden="true">
+                                <p>Visualization will appear here after analysis.</p>
+                            </div>
+                        </div>
+
+                        <div class="legend">
+                            <span><i class="dot dot--high"></i>High Risk</span>
+                            <span><i class="dot dot--medium"></i>Medium Risk</span>
+                            <span><i class="dot dot--low"></i>Low Risk</span>
+                        </div>
+                    </article>
+
+                    <div class="results-sidebar">
+                        <article class="card recommendations-card">
+                            <div class="panel-header">
+                                <div>
+                                    <p class="section-heading__eyebrow">Clinical summary</p>
+                                    <h3>Next Steps</h3>
+                                </div>
+                            </div>
+                            <p id="recommendationText">
+                                Upload a scan to generate a recommendation summary.
+                            </p>
+                            <div class="timing-grid" id="timingGrid"></div>
+                        </article>
+
+                        <article class="card nodules-panel">
+                            <div class="panel-header">
+                                <div>
+                                    <p class="section-heading__eyebrow">Detected findings</p>
+                                    <h3>Nodules</h3>
+                                </div>
+                            </div>
+                            <div class="empty-state" id="emptyState">
+                                <div class="empty-state__icon">✓</div>
+                                <h4>No suspicious nodules detected</h4>
+                                <p>
+                                    The CT scan appears clear. Continue routine screening as advised by
+                                    your physician.
+                                </p>
+                            </div>
+                            <div class="nodules-list" id="nodulesList"></div>
+                        </article>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <template id="noduleCardTemplate">
+        <article class="nodule-card">
+            <div class="nodule-card__top">
+                <h4></h4>
+                <span class="risk-pill"></span>
+            </div>
+            <p class="nodule-location"></p>
+            <div class="metric-block">
+                <div class="metric-block__row">
+                    <span>Detection Confidence</span>
+                    <strong class="detection-value"></strong>
+                </div>
+                <div class="progress-bar"><span class="detection-bar"></span></div>
+            </div>
+            <div class="metric-block">
+                <div class="metric-block__row">
+                    <span>Malignancy Probability</span>
+                    <strong class="malignancy-value"></strong>
+                </div>
+                <div class="progress-bar"><span class="malignancy-bar"></span></div>
+            </div>
+            <div class="recommendation-block">
+                <span>Recommendation</span>
+                <p class="nodule-recommendation"></p>
+            </div>
+        </article>
+    </template>
+
+    <script src="/app.js"></script>
+</body>
+</html>
