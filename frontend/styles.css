@@ -795,8 +795,15 @@ a:focus-visible,
     width: 60px;
     height: 60px;
     border-radius: 999px;
-    background: radial-gradient(circle, rgba(44, 92, 245, 0.92), rgba(44, 92, 245, 0.28));
+    display: grid;
+    place-items: center;
     animation: analysisPulse 2s infinite var(--ease-apple);
+}
+
+.analysis-pulse img {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
 }
 
 .analysis-view h1 {

@@ -16,6 +16,7 @@
         rel="stylesheet"
     >
     <link rel="stylesheet" href="/styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
 </head>
 <body>
     <div class="app-shell">
@@ -236,7 +237,9 @@
 
             <section class="route-view" id="analysisPage" hidden>
                 <div class="analysis-view page-entrance">
-                    <div class="analysis-pulse" aria-hidden="true"></div>
+                    <div class="analysis-pulse" aria-hidden="true">
+                        <img src="/assets/favicon.png" alt="">
+                    </div>
                     <h1>Analyzing CT Scan...</h1>
                     <p class="analysis-detail" id="analysisDetail">Preparing volumetric data</p>
                     <div class="analysis-steps" aria-hidden="true">

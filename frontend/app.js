@@ -728,7 +728,20 @@ function loadHistory() {
 }
 
 function saveHistory(history) {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+    const compactHistory = history
+        .slice(0, 20)
+        .map((scan) => ({
+            ...scan,
+            result: scan.result
+                ? {
+                    ...scan.result,
+                    visualization: null,
+                }
+                : null,
+        }));
+
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(compactHistory));
+    state.history = compactHistory;
 }
 
 function buildSampleScan(scanId) {
@@ -862,13 +875,6 @@ function generatePdfReport(previewOnly) {
     const visualization = scanImage.src
         ? `<img src="${scanImage.src}" alt="CT visualization" style="width:100%;border:1px solid #e5e7eb;border-radius:12px;">`
         : "<div style='padding:32px;border:1px solid #e5e7eb;border-radius:12px;background:#f8fafc;'>Visualization not available for this scan.</div>";
-    const reportWindow = window.open("", "_blank", "noopener,noreferrer,width=1100,height=900");
-
-    if (!reportWindow) {
-        toastLikeAlert("Popup blocked. Allow popups to generate the report.");
-        return;
-    }
-
     const reportHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -931,16 +937,70 @@ ${visualization}
 </body>
 </html>`;
 
-    reportWindow.document.open();
-    reportWindow.document.write(reportHtml);
-    reportWindow.document.close();
+    if (previewOnly) {
+        const reportWindow = window.open("", "_blank", "noopener,noreferrer,width=1100,height=900");
+        if (!reportWindow) {
+            toastLikeAlert("Popup blocked. Allow popups to preview the report.");
+            return;
+        }
+
+        reportWindow.document.open();
+        reportWindow.document.write(reportHtml);
+        reportWindow.document.close();
+        openModal(null);
+        return;
+    }
+
+    const html2pdfInstance = window.html2pdf;
+    if (!html2pdfInstance) {
+        toastLikeAlert("PDF library failed to load. Falling back to preview window.");
+        generatePdfReport(true);
+        return;
+    }
+
+    const styleMatch = reportHtml.match(/<style>([\s\S]*?)<\/style>/i);
+    const bodyMatch = reportHtml.match(/<body>([\s\S]*?)<\/body>/i);
+    const reportRoot = document.createElement("div");
+    reportRoot.style.position = "fixed";
+    reportRoot.style.left = "-99999px";
+    reportRoot.style.top = "0";
+    reportRoot.style.width = "210mm";
+    reportRoot.style.background = "#ffffff";
+    reportRoot.innerHTML = `${styleMatch ? `<style>${styleMatch[1]}</style>` : ""}${bodyMatch ? bodyMatch[1] : ""}`;
+    document.body.appendChild(reportRoot);
+
+    const filename = `OVX_Report_${scan.id}_${formatReportDate(new Date().toISOString())}.pdf`;
     openModal(null);
 
-    if (!previewOnly) {
-        window.setTimeout(() => {
-            reportWindow.print();
-        }, 400);
-    }
+    html2pdfInstance()
+        .set({
+            margin: 0,
+            filename,
+            image: { type: "jpeg", quality: 0.98 },
+            html2canvas: {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: "#ffffff",
+            },
+            jsPDF: {
+                unit: "mm",
+                format: "a4",
+                orientation: "portrait",
+            },
+            pagebreak: { mode: ["css", "legacy"] },
+        })
+        .from(reportRoot)
+        .save()
+        .then(() => {
+            document.body.removeChild(reportRoot);
+            toastLikeAlert("Report downloaded successfully.");
+        })
+        .catch(() => {
+            if (document.body.contains(reportRoot)) {
+                document.body.removeChild(reportRoot);
+            }
+            toastLikeAlert("PDF generation failed. Try Preview instead.");
+        });
 }
 
 function openModal(type) {
@@ -1012,6 +1072,14 @@ function formatDate(value, withTime = false) {
         year: "numeric",
         ...(withTime ? { hour: "numeric", minute: "2-digit" } : {}),
     }).format(new Date(value));
+}
+
+function formatReportDate(value) {
+    const date = new Date(value);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}${month}${day}`;
 }
 
 function timeAgo(value) {
