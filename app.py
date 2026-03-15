@@ -201,10 +201,19 @@ def analyze():
         return jsonify({'error': str(exc)}), 500
 
 
+@app.route('/experiments/<path:path>')
+def experiment_assets(path):
+    """Serve experiment-generated images for the technical page."""
+    return send_from_directory('experiments', path)
+
+
 @app.route('/<path:path>')
 def frontend_files(path):
     """Serve frontend assets from the frontend directory."""
-    return send_from_directory(app.static_folder, path)
+    target = Path(app.static_folder) / path
+    if target.exists() and target.is_file():
+        return send_from_directory(app.static_folder, path)
+    return send_from_directory(app.static_folder, 'index.html')
 
 
 if __name__ == '__main__':

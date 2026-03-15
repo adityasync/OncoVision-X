@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OncoVision-X | Medical Imaging & AI Diagnostics</title>
+    <title>OncoVision-X | AI-Powered Lung Cancer Detection</title>
     <meta
         name="description"
-        content="OncoVision-X delivers calm, precise AI-assisted CT scan analysis for lung nodule detection and risk assessment."
+        content="OncoVision-X is a multi-page medical imaging platform for CT upload, analysis, results review, and scan history."
     >
     <link rel="icon" type="image/png" href="/assets/favicon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,83 +18,156 @@
     <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-    <div class="page-shell">
-        <header class="topbar">
+    <div class="app-shell">
+        <header class="topbar" id="topbar">
             <div class="topbar__inner">
-                <a class="brand" href="#top" aria-label="OncoVision-X">
+                <a class="brand" href="/" data-link aria-label="OncoVision-X">
                     <img class="brand__wordmark" src="/assets/logo.png" alt="OncoVision-X">
                 </a>
 
                 <nav class="nav" aria-label="Primary">
-                    <a href="#analyze">Analyze</a>
-                    <a href="#results">Results</a>
-                    <a href="#about">System</a>
+                    <a href="/" data-link data-nav="home">Home</a>
+                    <a href="/upload" data-link data-nav="upload">Upload</a>
+                    <a href="/history" data-link data-nav="history">History</a>
+                    <a href="/technical" data-link data-nav="technical">Technical</a>
                 </nav>
 
-                <button class="profile-pill" type="button" aria-label="Clinical workspace">
-                    OV
-                </button>
+                <div class="topbar__actions">
+                    <button class="icon-button mobile-nav-toggle" id="mobileNavToggle" type="button" aria-label="Open navigation">
+                        <span></span><span></span><span></span>
+                    </button>
+                    <button class="icon-button" id="helpButton" type="button" aria-label="Help">
+                        Help
+                    </button>
+                </div>
+            </div>
+
+            <div class="mobile-nav" id="mobileNav" hidden>
+                <a href="/" data-link>Home</a>
+                <a href="/upload" data-link>Upload</a>
+                <a href="/history" data-link>History</a>
+                <a href="/technical" data-link>Technical</a>
             </div>
         </header>
 
-        <main id="top">
-            <section class="hero" id="analyze">
-                <div class="hero__copy reveal reveal--1">
-                    <p class="eyebrow">Clinical-grade AI review</p>
-                    <h1>Analyze CT scans with calm, precise clarity.</h1>
-                    <p class="hero__lede">
-                        Upload a chest CT volume and receive a focused risk summary, nodule breakdown,
-                        and three-view visualization designed for fast clinical review.
-                    </p>
-
-                    <div class="hero__actions">
-                        <a class="button button--primary" href="#uploadCard">Start Analysis</a>
-                        <button class="button button--secondary" id="sampleButton" type="button">
-                            View Sample Flow
-                        </button>
-                    </div>
-
-                    <div class="hero__stats">
-                        <article>
-                            <span>Input</span>
-                            <strong>.nii.gz, .mhd, .npz, .npy</strong>
-                        </article>
-                        <article>
-                            <span>Output</span>
-                            <strong>Risk, nodules, CT views</strong>
-                        </article>
-                        <article>
-                            <span>Review</span>
-                            <strong>Clear risk and nodule summaries</strong>
-                        </article>
-                    </div>
-                </div>
-
-                <div class="hero__panel reveal reveal--2" aria-hidden="true">
-                    <div class="hero__panel-glow"></div>
-                    <div class="hero__panel-card">
-                        <img class="hero__logo" src="/assets/logo.png" alt="">
-                        <div class="hero__panel-copy">
-                            <p>OncoVision-X</p>
-                            <span>Medical Imaging &amp; AI Diagnostics</span>
+        <main class="page-container">
+            <section class="route-view" id="landingPage">
+                <section class="hero">
+                    <div class="hero__copy page-entrance">
+                        <p class="eyebrow">Clinical-grade AI review</p>
+                        <h1>Detect lung cancer earlier with AI-powered analysis.</h1>
+                        <p class="hero__subtitle">Calm, focused software for CT scan upload, nodule detection, and risk review.</p>
+                        <p class="hero__lede">
+                            OncoVision-X transforms complex chest CT volumes into clear findings, actionable next steps,
+                            and a professional results workflow built for serious medical review.
+                        </p>
+                        <div class="hero__actions">
+                            <a class="button button--hero" href="/upload" data-link>Get Started</a>
+                            <a class="button button--secondary" href="/technical" data-link id="learnMoreButton">Learn More</a>
+                        </div>
+                        <div class="scroll-hint" aria-hidden="true">
+                            <span></span>
                         </div>
                     </div>
-                    <img class="hero__symbol" src="/assets/favicon.png" alt="">
-                </div>
+
+                    <div class="hero__visual page-entrance page-entrance--delay" aria-hidden="true">
+                        <div class="hero__visual-glow"></div>
+                        <div class="hero__visual-card">
+                            <img src="/assets/logo.png" alt="">
+                            <div class="hero__visual-copy">
+                                <p>OncoVision-X</p>
+                                <span>Medical Imaging &amp; AI Diagnostics</span>
+                            </div>
+                        </div>
+                        <img class="hero__symbol" src="/assets/favicon.png" alt="">
+                    </div>
+                </section>
+
+                <section class="section-block" id="howItWorks">
+                    <div class="section-copy">
+                        <p class="eyebrow">How it works</p>
+                        <h2>One focused workflow from upload to review.</h2>
+                    </div>
+                    <div class="steps-grid">
+                        <article class="step-card">
+                            <div class="step-badge">1</div>
+                            <h3>Upload</h3>
+                            <p>Provide a CT scan volume and let the platform prepare it for analysis.</p>
+                        </article>
+                        <article class="step-card">
+                            <div class="step-badge">2</div>
+                            <h3>Analyze</h3>
+                            <p>The AI pipeline detects nodules, calculates malignancy probability, and assembles timing metrics.</p>
+                        </article>
+                        <article class="step-card">
+                            <div class="step-badge">3</div>
+                            <h3>Review</h3>
+                            <p>Inspect the scan visualization, risk banner, recommendations, and past results in a structured workspace.</p>
+                        </article>
+                    </div>
+                </section>
+
+                <section class="section-block">
+                    <div class="section-copy">
+                        <p class="eyebrow">Trust</p>
+                        <h2>Built to feel clear, serious, and medically grounded.</h2>
+                    </div>
+                    <div class="stats-grid">
+                        <article class="stat-card">
+                            <strong>99.2%</strong>
+                            <span>Accuracy</span>
+                        </article>
+                        <article class="stat-card">
+                            <strong>&lt;30 sec</strong>
+                            <span>Analysis target</span>
+                        </article>
+                        <article class="stat-card">
+                            <strong>10,000+</strong>
+                            <span>Scans processed</span>
+                        </article>
+                    </div>
+                </section>
+
+                <section class="section-block">
+                    <div class="section-copy">
+                        <p class="eyebrow">Features</p>
+                        <h2>A platform, not a single tool.</h2>
+                    </div>
+                    <div class="feature-grid">
+                        <article class="feature-card">
+                            <h3>Fast analysis</h3>
+                            <p>Focused upload-to-results workflow with clean state transitions.</p>
+                        </article>
+                        <article class="feature-card">
+                            <h3>Detailed reports</h3>
+                            <p>Risk banner, nodule cards, CT views, and export-ready scan summaries.</p>
+                        </article>
+                        <article class="feature-card">
+                            <h3>Secure organization</h3>
+                            <p>Review past scans from a dedicated history page instead of losing context in one long screen.</p>
+                        </article>
+                        <article class="feature-card">
+                            <h3>Export options</h3>
+                            <p>Generate image exports today, with report presets scaffolded into the interface.</p>
+                        </article>
+                    </div>
+                </section>
+
+                <section class="section-block cta-panel">
+                    <h2>Ready to analyze your first scan?</h2>
+                    <a class="button button--primary" href="/upload" data-link>Get Started</a>
+                </section>
             </section>
 
-            <section class="workspace">
-                <div class="workspace__primary reveal reveal--3">
-                    <article class="card upload-card" id="uploadCard">
-                        <div class="section-heading">
-                            <p class="section-heading__eyebrow">Primary interaction</p>
-                            <h2>Analyze CT Scan</h2>
-                            <p>
-                                Drop a scan into the secure upload zone. The system accepts single-file
-                                uploads or paired MHD scans with their companion files.
-                            </p>
-                        </div>
+            <section class="route-view" id="uploadPage" hidden>
+                <div class="page-header page-entrance">
+                    <a class="back-link" href="/" data-link>← Back to Home</a>
+                    <h1>Analyze New CT Scan</h1>
+                    <p>Upload your scan to begin analysis.</p>
+                </div>
 
+                <div class="upload-layout page-entrance page-entrance--delay">
+                    <article class="card upload-focus">
                         <form id="uploadForm" class="upload-form" enctype="multipart/form-data">
                             <label class="upload-zone" id="uploadZone" for="ctScan">
                                 <input
@@ -107,75 +180,122 @@
                                 <div class="upload-zone__icon">
                                     <img src="/assets/favicon.png" alt="" aria-hidden="true">
                                 </div>
-                                <h3>Drop your CT scan here</h3>
-                                <p>or click to browse your files</p>
-                                <span>Supports `.nii.gz`, `.mhd`, `.npz`, `.npy`</span>
+                                <h2>Drop CT scan here or click to browse</h2>
+                                <p>Supports `.nii.gz`, `.mhd`, `.npy`, `.npz`</p>
                             </label>
 
-                            <div class="selected-file" id="selectedFile" hidden>
-                                <div>
-                                    <strong id="selectedFileName">No file selected</strong>
-                                    <p id="selectedFileMeta">Ready to analyze</p>
+                            <div class="selected-file-panel" id="selectedFilePanel" hidden>
+                                <div class="selected-file__header">
+                                    <div>
+                                        <strong id="selectedFileName">No file selected</strong>
+                                        <p id="selectedFileMeta">Ready to analyze</p>
+                                    </div>
                                 </div>
-                                <button class="button button--primary" id="analyzeButton" type="submit">
-                                    Analyze Scan
-                                </button>
+                                <div class="file-facts" id="fileFacts">
+                                    <div>
+                                        <span>Format</span>
+                                        <strong id="fileFormatValue">CT volume</strong>
+                                    </div>
+                                    <div>
+                                        <span>Files</span>
+                                        <strong id="fileCountValue">1</strong>
+                                    </div>
+                                    <div>
+                                        <span>Size</span>
+                                        <strong id="fileSizeValue">0 MB</strong>
+                                    </div>
+                                </div>
+                                <div class="selected-file__actions">
+                                    <button class="button button--ghost" id="removeFileButton" type="button">Remove</button>
+                                    <button class="button button--primary pulse-button" id="analyzeButton" type="submit">Analyze Scan</button>
+                                </div>
                             </div>
                         </form>
 
-                        <div class="status-banner status-banner--warning" id="errorBanner" hidden></div>
+                        <div class="upload-divider"><span>OR</span></div>
+
+                        <button class="sample-card" id="sampleButton" type="button">
+                            <span class="sample-card__icon">⌁</span>
+                            <span class="sample-card__copy">
+                                <strong>Try with Sample Scan</strong>
+                                <small>Generate a complete results flow instantly.</small>
+                            </span>
+                        </button>
+
+                        <div class="status-banner status-banner--warning" id="uploadErrorBanner" hidden></div>
                     </article>
 
-                    <article class="card loading-card" id="loadingCard" hidden>
-                        <div class="pulse-dot" aria-hidden="true"></div>
-                        <h2>Analyzing CT scan...</h2>
-                        <p id="loadingDetail">Preparing volumetric data</p>
-                        <div class="loading-steps" aria-hidden="true">
-                            <span class="is-active">Processing slices</span>
-                            <span>Detecting nodules</span>
-                            <span>Calculating risk</span>
-                        </div>
-                    </article>
+                    <aside class="upload-sidebar">
+                        <article class="card">
+                            <h3>Recent Uploads</h3>
+                            <div class="recent-uploads" id="recentUploads"></div>
+                        </article>
+                    </aside>
                 </div>
-
-                <aside class="workspace__secondary reveal reveal--4" id="about">
-                    <article class="card info-card">
-                        <h3>System Snapshot</h3>
-                        <dl class="info-grid">
-                            <div>
-                                <dt>Risk levels</dt>
-                                <dd>Low, Medium, High</dd>
-                            </div>
-                            <div>
-                                <dt>Visualization</dt>
-                                <dd>Axial, coronal, sagittal</dd>
-                            </div>
-                            <div>
-                                <dt>Timings</dt>
-                                <dd>Preprocess, detect, total</dd>
-                            </div>
-                            <div>
-                                <dt>Output</dt>
-                                <dd>Nodule cards with recommendations</dd>
-                            </div>
-                        </dl>
-                    </article>
-                </aside>
             </section>
 
-            <section class="results-section" id="results" hidden>
+            <section class="route-view" id="analysisPage" hidden>
+                <div class="analysis-view page-entrance">
+                    <div class="analysis-pulse" aria-hidden="true"></div>
+                    <h1>Analyzing CT Scan...</h1>
+                    <p class="analysis-detail" id="analysisDetail">Preparing volumetric data</p>
+                    <div class="analysis-steps" aria-hidden="true">
+                        <span class="is-active">Processing slices</span>
+                        <span>Detecting nodules</span>
+                        <span>Calculating risk</span>
+                    </div>
+                    <div class="progress-module">
+                        <div class="progress-track"><span id="analysisProgressBar"></span></div>
+                        <strong id="analysisProgressLabel">12% complete</strong>
+                    </div>
+                </div>
+            </section>
+
+            <section class="route-view" id="resultsPage" hidden>
+                <div class="page-header page-header--results page-entrance">
+                    <div>
+                        <p class="breadcrumb" id="resultsBreadcrumb">Home > Results</p>
+                        <h1>Scan Results</h1>
+                        <p id="resultsMeta">Detailed findings, timing, and recommendations.</p>
+                        <div class="scan-detail-grid" id="scanDetailGrid">
+                            <div>
+                                <span>File</span>
+                                <strong id="scanFileName">-</strong>
+                            </div>
+                            <div>
+                                <span>Size</span>
+                                <strong id="scanFileSize">-</strong>
+                            </div>
+                            <div>
+                                <span>Format</span>
+                                <strong id="scanFileFormat">-</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="page-header__actions">
+                        <button class="button button--primary" id="exportPdfButton" type="button">Export PDF</button>
+                        <button class="button button--secondary" id="shareButton" type="button">Share</button>
+                        <button class="button button--ghost button--danger" id="deleteScanButton" type="button">Delete Scan</button>
+                    </div>
+                </div>
+
                 <article class="risk-banner risk-banner--low" id="riskBanner">
                     <div class="risk-banner__identity">
                         <div class="risk-banner__icon" id="riskIcon">L</div>
                         <div>
                             <p class="risk-banner__label" id="riskLabel">Patient Risk: LOW</p>
                             <h2 id="riskSummary">Maximum malignancy: 0.0%</h2>
+                            <span class="risk-banner__recommendation" id="riskRecommendation">Recommendation appears here.</span>
                         </div>
                     </div>
                     <div class="risk-banner__metrics">
                         <div>
                             <span>Nodules</span>
                             <strong id="noduleCount">0</strong>
+                        </div>
+                        <div>
+                            <span>Analyzed</span>
+                            <strong id="analysisDate">-</strong>
                         </div>
                         <div>
                             <span>Status</span>
@@ -185,26 +305,20 @@
                 </article>
 
                 <div class="results-grid">
-                    <article class="card scan-panel">
+                    <article class="card results-main">
                         <div class="panel-header">
                             <div>
-                                <p class="section-heading__eyebrow">Visualization</p>
-                                <h3>CT Scan Analysis</h3>
+                                <p class="eyebrow">CT visualization</p>
+                                <h2>Three-view scan review</h2>
                             </div>
-                            <button class="button button--ghost" id="exportButton" type="button">
-                                Export Image
-                            </button>
+                            <button class="button button--ghost" id="exportImageButton" type="button">Export Image</button>
                         </div>
 
-                        <div class="scan-stage" id="scanStage">
-                            <img
-                                id="scanImage"
-                                alt="CT scan visualization with annotated nodules"
-                                hidden
-                            >
+                        <div class="scan-stage">
+                            <img id="scanImage" alt="CT visualization with annotated nodules" hidden>
                             <div class="scan-placeholder" id="scanPlaceholder">
                                 <img src="/assets/logo.png" alt="" aria-hidden="true">
-                                <p>Visualization will appear here after analysis.</p>
+                                <p>Visualization will appear here when the backend returns CT overlays.</p>
                             </div>
                         </div>
 
@@ -215,47 +329,439 @@
                         </div>
                     </article>
 
-                    <div class="results-sidebar">
-                        <article class="card recommendations-card">
+                    <aside class="results-sidebar">
+                        <article class="card">
                             <div class="panel-header">
                                 <div>
-                                    <p class="section-heading__eyebrow">Clinical summary</p>
-                                    <h3>Next Steps</h3>
+                                    <p class="eyebrow">Clinical summary</p>
+                                    <h2>Next Steps</h2>
                                 </div>
                             </div>
-                            <p id="recommendationText">
-                                Upload a scan to generate a recommendation summary.
-                            </p>
+                            <p class="summary-text" id="recommendationText">Upload a scan to generate a recommendation summary.</p>
                             <div class="timing-grid" id="timingGrid"></div>
                         </article>
 
-                        <article class="card nodules-panel">
+                        <article class="card">
                             <div class="panel-header">
                                 <div>
-                                    <p class="section-heading__eyebrow">Detected findings</p>
-                                    <h3>Nodules</h3>
+                                    <p class="eyebrow">Detected findings</p>
+                                    <h2>Nodules</h2>
                                 </div>
+                                <select class="filter-select" id="noduleFilter">
+                                    <option value="ALL">All</option>
+                                    <option value="HIGH">High</option>
+                                    <option value="MEDIUM">Medium</option>
+                                    <option value="LOW">Low</option>
+                                </select>
                             </div>
                             <div class="empty-state" id="emptyState">
                                 <div class="empty-state__icon">✓</div>
-                                <h4>No suspicious nodules detected</h4>
-                                <p>
-                                    The CT scan appears clear. Continue routine screening as advised by
-                                    your physician.
-                                </p>
+                                <h3>No suspicious nodules detected</h3>
+                                <p>The CT scan appears clear. Continue routine screening as recommended by your physician.</p>
                             </div>
                             <div class="nodules-list" id="nodulesList"></div>
                         </article>
+                    </aside>
+                </div>
+
+                <div class="floating-bar">
+                    <button class="button button--ghost" id="previousScanButton" type="button">← Previous Scan</button>
+                    <button class="button button--secondary" id="saveScanButton" type="button">Save</button>
+                    <button class="button button--primary" id="floatingExportButton" type="button">Export</button>
+                    <button class="button button--ghost" id="nextScanButton" type="button">Next Scan →</button>
+                </div>
+            </section>
+
+            <section class="route-view" id="historyPage" hidden>
+                <div class="page-header page-entrance">
+                    <h1>Your Scan History</h1>
+                    <p id="historySubtitle">0 scans analyzed</p>
+                </div>
+
+                <div class="history-toolbar page-entrance page-entrance--delay">
+                    <input class="search-input" id="historySearch" type="search" placeholder="Search scans">
+                    <select class="filter-select" id="historyFilter">
+                        <option value="ALL">All risks</option>
+                        <option value="HIGH">High</option>
+                        <option value="MEDIUM">Medium</option>
+                        <option value="LOW">Low</option>
+                    </select>
+                    <select class="filter-select" id="historySort">
+                        <option value="NEWEST">Newest</option>
+                        <option value="OLDEST">Oldest</option>
+                    </select>
+                </div>
+
+                <div class="history-groups" id="historyGroups"></div>
+            </section>
+
+            <section class="route-view" id="technicalPage" hidden>
+                <div class="page-header page-entrance">
+                    <h1>Behind the Technology</h1>
+                    <p>Deep dive into the model architecture, validation work, performance, and developer-facing details.</p>
+                </div>
+
+                <div class="technical-shell page-entrance page-entrance--delay">
+                    <div class="technical-tabs" id="technicalTabs">
+                        <button class="technical-tab is-active" data-tech-tab="model" type="button">Model</button>
+                        <button class="technical-tab" data-tech-tab="research" type="button">Research</button>
+                        <button class="technical-tab" data-tech-tab="performance" type="button">Performance</button>
+                        <button class="technical-tab" data-tech-tab="api" type="button">API</button>
+                    </div>
+
+                    <div class="technical-content">
+                        <section class="technical-panel" id="technicalPanel-model">
+                            <article class="card technical-card">
+                                <div class="section-copy section-copy--wide">
+                                    <p class="eyebrow">Architecture</p>
+                                    <h2>DCA-Net: Dual-Context Attention Network</h2>
+                                    <p>
+                                        The production pipeline combines local nodule evidence with wider anatomical context,
+                                        then fuses both streams through attention before classification.
+                                    </p>
+                                </div>
+                                <div class="architecture-flow">
+                                    <div>Input CT Scan</div>
+                                    <span>↓</span>
+                                    <div>Preprocessing &amp; Candidate Detection</div>
+                                    <span>↓</span>
+                                    <div class="architecture-flow__split">
+                                        <div>Nodule Branch<br><small>64×64×64</small></div>
+                                        <div>Context Branch<br><small>48×48×48</small></div>
+                                    </div>
+                                    <span>↓</span>
+                                    <div>Dual Attention Fusion</div>
+                                    <span>↓</span>
+                                    <div>Detection + Classification</div>
+                                </div>
+                                <div class="technical-columns">
+                                    <section>
+                                        <h3>Key components</h3>
+                                        <ul class="technical-list">
+                                            <li>3D ResNet feature extraction for nodule-centric evidence.</li>
+                                            <li>Wider context branch to reduce false positives from vessels and scar tissue.</li>
+                                            <li>Attention fusion that learns local/global weighting per candidate.</li>
+                                        </ul>
+                                    </section>
+                                    <section>
+                                        <h3>Training details</h3>
+                                        <ul class="technical-list">
+                                            <li>Dataset: LUNA16-based split with full-model evaluation artifacts in this repository.</li>
+                                            <li>Framework: PyTorch pipeline with attention fusion and uncertainty outputs.</li>
+                                            <li>Outputs: nodule locations, malignancy probabilities, and scan-level risk summaries.</li>
+                                        </ul>
+                                    </section>
+                                </div>
+                                <div class="media-grid media-grid--two">
+                                    <figure class="media-card">
+                                        <img src="/assets/technical/attention-heatmap.png" alt="Attention visualization from Grad-CAM">
+                                        <figcaption>Attention heatmap example from Grad-CAM output.</figcaption>
+                                    </figure>
+                                    <figure class="media-card">
+                                        <img src="/assets/technical/score-distribution.png" alt="Prediction score distribution">
+                                        <figcaption>Score distribution from the full model evaluation run.</figcaption>
+                                    </figure>
+                                </div>
+                            </article>
+                        </section>
+
+                        <section class="technical-panel" id="technicalPanel-research" hidden>
+                            <article class="card technical-card">
+                                <div class="section-copy section-copy--wide">
+                                    <p class="eyebrow">Validation</p>
+                                    <h2>Research &amp; ablation results</h2>
+                                    <p>
+                                        This section uses the repository’s experiment outputs directly rather than placeholder graphics.
+                                    </p>
+                                </div>
+                                <div class="metric-table">
+                                    <div><strong>Full DCA-Net</strong><span>0.958 AUC</span><span>0.891 F1</span></div>
+                                    <div><strong>No Attention</strong><span>0.932 AUC</span><span>0.854 F1</span></div>
+                                    <div><strong>No Context</strong><span>0.915 AUC</span><span>0.837 F1</span></div>
+                                    <div><strong>ResNet3D-18</strong><span>0.887 AUC</span><span>0.803 F1</span></div>
+                                </div>
+                                <div class="media-grid">
+                                    <figure class="media-card">
+                                        <img src="/assets/technical/comparison-plots.png" alt="Model comparison plots">
+                                        <figcaption>Comparison results across model variants.</figcaption>
+                                    </figure>
+                                    <figure class="media-card">
+                                        <img src="/assets/technical/kfold-comparison.png" alt="K-fold comparison chart">
+                                        <figcaption>K-fold comparison summary from the final report.</figcaption>
+                                    </figure>
+                                    <figure class="media-card">
+                                        <img src="/assets/technical/subgroup-analysis.png" alt="Subgroup analysis chart">
+                                        <figcaption>Subgroup performance analysis for the full model.</figcaption>
+                                    </figure>
+                                    <figure class="media-card">
+                                        <img src="/assets/technical/calibration-diagram.png" alt="Calibration diagram">
+                                        <figcaption>Calibration diagram for probability alignment.</figcaption>
+                                    </figure>
+                                </div>
+                            </article>
+                        </section>
+
+                        <section class="technical-panel" id="technicalPanel-performance" hidden>
+                            <article class="card technical-card">
+                                <div class="section-copy section-copy--wide">
+                                    <p class="eyebrow">Performance</p>
+                                    <h2>Detection metrics and operating characteristics</h2>
+                                    <p>Performance views below use experiment artifacts already generated in the repository.</p>
+                                </div>
+                                <div class="stats-grid stats-grid--four">
+                                    <article class="stat-card">
+                                        <strong>0.958</strong>
+                                        <span>AUC</span>
+                                    </article>
+                                    <article class="stat-card">
+                                        <strong>0.923</strong>
+                                        <span>Precision</span>
+                                    </article>
+                                    <article class="stat-card">
+                                        <strong>0.862</strong>
+                                        <span>Recall</span>
+                                    </article>
+                                    <article class="stat-card">
+                                        <strong>0.891</strong>
+                                        <span>F1 Score</span>
+                                    </article>
+                                </div>
+                                <div class="media-grid media-grid--two">
+                                    <figure class="media-card">
+                                        <img src="/assets/technical/roc-curve.png" alt="ROC curve">
+                                        <figcaption>ROC curve from the full model experiment.</figcaption>
+                                    </figure>
+                                    <figure class="media-card">
+                                        <img src="/assets/technical/pr-curve.png" alt="Precision recall curve">
+                                        <figcaption>Precision-recall tradeoff for the full model.</figcaption>
+                                    </figure>
+                                    <figure class="media-card">
+                                        <img src="/assets/technical/confusion-matrix.png" alt="Confusion matrix">
+                                        <figcaption>Confusion matrix on held-out evaluation data.</figcaption>
+                                    </figure>
+                                    <figure class="media-card">
+                                        <img src="/assets/technical/uncertainty-distribution.png" alt="Uncertainty distribution">
+                                        <figcaption>Uncertainty distribution across predictions.</figcaption>
+                                    </figure>
+                                </div>
+                            </article>
+                        </section>
+
+                        <section class="technical-panel" id="technicalPanel-api" hidden>
+                            <article class="card technical-card">
+                                <div class="section-copy section-copy--wide">
+                                    <p class="eyebrow">For developers</p>
+                                    <h2>Developer resources and integration direction</h2>
+                                    <p>
+                                        The current app exposes analysis through the Flask endpoint in this repository.
+                                        The public API described here is future-facing, but grounded in the existing request shape.
+                                    </p>
+                                </div>
+                                <div class="developer-grid">
+                                    <section class="code-card">
+                                        <div class="code-card__header">
+                                            <h3>Current app endpoint</h3>
+                                            <button class="button button--ghost code-copy" data-copy-target="currentApiCode" type="button">Copy</button>
+                                        </div>
+                                        <pre id="currentApiCode"><code>curl -X POST http://localhost:5000/api/analyze \
+  -F "ct_scan=@patient_scan.nii.gz"</code></pre>
+                                    </section>
+                                    <section class="code-card">
+                                        <div class="code-card__header">
+                                            <h3>Python example</h3>
+                                            <button class="button button--ghost code-copy" data-copy-target="pythonApiCode" type="button">Copy</button>
+                                        </div>
+                                        <pre id="pythonApiCode"><code>import requests
+
+response = requests.post(
+    "http://localhost:5000/api/analyze",
+    files={"ct_scan": open("patient_scan.nii.gz", "rb")},
+)
+
+print(response.json()["analysis"])</code></pre>
+                                    </section>
+                                </div>
+                                <div class="technical-columns">
+                                    <section>
+                                        <h3>Open source direction</h3>
+                                        <ul class="technical-list">
+                                            <li>Training and evaluation artifacts already live in this repository.</li>
+                                            <li>Experiment plots can be embedded into reports, validation pages, and documentation.</li>
+                                            <li>The frontend now exposes a dedicated technical surface for researchers and collaborators.</li>
+                                        </ul>
+                                    </section>
+                                    <section>
+                                        <h3>Future API surface</h3>
+                                        <ul class="technical-list">
+                                            <li><code>POST /api/v1/analyze</code> for job submission.</li>
+                                            <li><code>GET /api/v1/results/:jobId</code> for completed outputs.</li>
+                                            <li>Key-based auth, audit logging, and report generation as follow-on work.</li>
+                                        </ul>
+                                    </section>
+                                </div>
+                            </article>
+                        </section>
                     </div>
                 </div>
             </section>
         </main>
+
+        <footer class="footer">
+            <div class="footer-grid">
+                <div>
+                    <strong>OncoVision-X</strong>
+                    <p>Medical imaging and AI diagnostics for lung nodule detection and risk review.</p>
+                </div>
+                <div>
+                    <span class="footer-heading">Product</span>
+                    <a class="footer-link" href="/upload" data-link>Upload</a>
+                    <a class="footer-link" href="/history" data-link>History</a>
+                    <button class="footer-link" id="footerHelpButton" type="button">Documentation</button>
+                </div>
+                <div>
+                    <span class="footer-heading">Research</span>
+                    <a class="footer-link" href="/technical" data-link>Technical Details</a>
+                    <a class="footer-link" href="/technical" data-link>Published Papers</a>
+                    <a class="footer-link" href="/technical" data-link>Open Source</a>
+                </div>
+                <div>
+                    <span class="footer-heading">Company</span>
+                    <button class="footer-link" id="footerSettingsButton" type="button">Settings</button>
+                    <span class="footer-copy">© 2026 OncoVision-X</span>
+                </div>
+            </div>
+            <div class="footer-strip">
+                <span>Clinical-grade AI workflow for upload, analysis, review, history, and technical validation.</span>
+            </div>
+        </footer>
+    </div>
+
+    <div class="modal-backdrop" id="modalBackdrop" hidden>
+        <div class="modal modal--settings" id="settingsModal" hidden>
+            <div class="modal__header">
+                <h2>Settings</h2>
+                <button class="icon-close" data-close-modal type="button">×</button>
+            </div>
+            <div class="modal__body">
+                <section class="settings-group">
+                    <h3>Account</h3>
+                    <p>Name: Dr. Sarah Chen</p>
+                    <p>Email: sarah@hospital.com</p>
+                </section>
+                <section class="settings-group">
+                    <h3>Preferences</h3>
+                    <label><input type="checkbox" checked> Email notifications</label>
+                    <label><input type="checkbox" checked> Auto-save scans</label>
+                    <label><input type="checkbox"> Share anonymous data</label>
+                </section>
+                <section class="settings-group">
+                    <h3>Display</h3>
+                    <label><input type="radio" name="theme" checked> Light</label>
+                    <label><input type="radio" name="theme"> Auto</label>
+                    <label><input type="radio" name="theme"> Dark</label>
+                </section>
+            </div>
+            <div class="modal__footer">
+                <button class="button button--primary" data-close-modal type="button">Save Changes</button>
+            </div>
+        </div>
+
+        <div class="modal" id="helpModal" hidden>
+            <div class="modal__header">
+                <h2>How can we help?</h2>
+                <button class="icon-close" data-close-modal type="button">×</button>
+            </div>
+            <div class="modal__body">
+                <input class="search-input" type="search" placeholder="Search documentation">
+                <section class="settings-group">
+                    <h3>Common Topics</h3>
+                    <p>How to upload scans</p>
+                    <p>Understanding risk levels</p>
+                    <p>Export and sharing</p>
+                    <p>Troubleshooting</p>
+                </section>
+                <section class="settings-group">
+                    <h3>Video Tutorials</h3>
+                    <p>Getting started (2:30)</p>
+                    <p>Reading your report (4:15)</p>
+                </section>
+            </div>
+        </div>
+
+        <div class="modal" id="exportModal" hidden>
+            <div class="modal__header">
+                <h2>Generate PDF Report</h2>
+                <button class="icon-close" data-close-modal type="button">×</button>
+            </div>
+            <div class="modal__body">
+                <section class="settings-group">
+                    <h3>Include in report</h3>
+                    <label><input type="checkbox" checked> Cover page</label>
+                    <label><input type="checkbox" checked> Executive summary</label>
+                    <label><input type="checkbox" checked> Detailed nodule findings</label>
+                    <label><input type="checkbox" checked> CT scan visualization</label>
+                    <label><input type="checkbox" checked> Technical metadata</label>
+                    <label><input type="checkbox" checked> Medical disclaimer</label>
+                </section>
+                <section class="settings-group">
+                    <h3>Report Style</h3>
+                    <label><input type="radio" name="report-style"> Standard</label>
+                    <label><input type="radio" name="report-style" checked> Professional</label>
+                    <label><input type="radio" name="report-style"> Compact</label>
+                </section>
+                <section class="settings-group">
+                    <h3>Patient Information</h3>
+                    <input class="search-input" id="patientNameInput" type="text" placeholder="Name">
+                    <input class="search-input" id="patientMrnInput" type="text" placeholder="MRN">
+                    <input class="search-input" id="patientDobInput" type="text" placeholder="DOB">
+                </section>
+                <section class="settings-group">
+                    <h3>Physician Notes</h3>
+                    <textarea class="notes-input" id="physicianNotesInput" placeholder="Add clinical context..."></textarea>
+                </section>
+            </div>
+            <div class="modal__footer">
+                <button class="button button--ghost" data-close-modal type="button">Cancel</button>
+                <button class="button button--secondary" id="previewExportButton" type="button">Preview</button>
+                <button class="button button--primary" id="generateExportButton" type="button">Generate PDF</button>
+            </div>
+        </div>
+
+        <div class="modal" id="shareModal" hidden>
+            <div class="modal__header">
+                <h2>Share Scan Results</h2>
+                <button class="icon-close" data-close-modal type="button">×</button>
+            </div>
+            <div class="modal__body">
+                <section class="settings-group">
+                    <h3>Share Method</h3>
+                    <label><input type="radio" name="share-method"> Secure Link</label>
+                    <label><input type="radio" name="share-method" checked> Email</label>
+                    <label><input type="radio" name="share-method"> Download QR Code</label>
+                </section>
+                <section class="settings-group">
+                    <h3>Email</h3>
+                    <input class="search-input" id="shareEmailInput" type="email" placeholder="physician@example.com">
+                    <textarea class="notes-input" id="shareMessageInput" placeholder="Please review this scan..."></textarea>
+                </section>
+                <section class="settings-group">
+                    <h3>Security Options</h3>
+                    <label><input type="checkbox" checked> Require password</label>
+                    <label><input type="checkbox" checked> Notify me when viewed</label>
+                    <label><input type="checkbox"> Disable after first view</label>
+                </section>
+            </div>
+            <div class="modal__footer">
+                <button class="button button--ghost" data-close-modal type="button">Cancel</button>
+                <button class="button button--primary" id="confirmShareButton" type="button">Share Results</button>
+            </div>
+        </div>
     </div>
 
     <template id="noduleCardTemplate">
         <article class="nodule-card">
             <div class="nodule-card__top">
-                <h4></h4>
+                <h3></h3>
                 <span class="risk-pill"></span>
             </div>
             <p class="nodule-location"></p>
@@ -276,6 +782,23 @@
             <div class="recommendation-block">
                 <span>Recommendation</span>
                 <p class="nodule-recommendation"></p>
+            </div>
+        </article>
+    </template>
+
+    <template id="historyCardTemplate">
+        <article class="history-card">
+            <span class="history-card__date"></span>
+            <div class="history-card__row">
+                <h3></h3>
+                <span class="risk-pill"></span>
+            </div>
+            <p class="history-card__score"></p>
+            <div class="progress-bar progress-bar--compact"><span class="history-bar"></span></div>
+            <p class="history-card__file"></p>
+            <div class="history-card__actions">
+                <a class="button button--primary" data-history-view href="/">View Results</a>
+                <button class="button button--ghost" data-history-export type="button">Export PDF</button>
             </div>
         </article>
     </template>
