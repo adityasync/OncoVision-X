@@ -1,365 +1,206 @@
 #!/usr/bin/env python3
-"""
-OncoVision-X Web Demo — Flask Backend
+"""Flask app for the rebuilt lung cancer detection demo."""
 
-Complete web backend with:
-  - CT scan upload and analysis (/api/analyze)
-  - CT slice visualization with marked nodules (/api/visualize)
-  - Demo mode with simulated results (/api/demo-analyze)
-  - Health check (/health)
-
-Usage:
-  python app.py                     # Start on port 5000
-  python app.py --port 8080         # Custom port
-  python app.py --demo              # Demo-only mode (no models required)
-
-NOT part of the research paper — demo feature only.
-"""
-
-import argparse
 import base64
-import json
 import os
-import sys
 import tempfile
-import time
 from io import BytesIO
 from pathlib import Path
 
-import numpy as np
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
+
 
 app = Flask(__name__)
 CORS(app)
 
-# ── Lazy-loaded global system ──
 _system = None
-_demo_only = False
 
 
 def get_system():
-    """Lazy-load the detection + classification system."""
+    """Lazy-load the detection system."""
     global _system
     if _system is not None:
         return _system
-    if _demo_only:
-        return None
 
     from src.pipeline.end_to_end import LungCancerDetectionSystem
 
     detection_ckpt = os.environ.get(
-        'DETECTION_CHECKPOINT', 'experiments/full_model/checkpoints/best.pth')
+        'DETECTION_CHECKPOINT',
+        'experiments/full_model/checkpoints/best.pth',
+    )
     classifier_ckpt = os.environ.get(
-        'CLASSIFIER_CHECKPOINT', 'pretrained/resnet_18_23dataset.pth')
-    detection_config = os.environ.get(
-        'DETECTION_CONFIG', 'configs/full_model.yaml')
+        'CLASSIFIER_CHECKPOINT',
+        'pretrained/resnet_18_23dataset.pth',
+    )
+    detection_cfg = os.environ.get(
+        'DETECTION_CONFIG',
+        'configs/full_model.yaml',
+    )
 
     _system = LungCancerDetectionSystem(
         detection_model_path=detection_ckpt if Path(detection_ckpt).exists() else None,
         classifier_model_path=classifier_ckpt if Path(classifier_ckpt).exists() else None,
-        detection_config_path=detection_config,
+        detection_config_path=detection_cfg,
     )
     return _system
 
 
-# ── Visualization ──
-
-RISK_COLORS = {
-    'high_risk': '#dc3545',
-    'medium_risk': '#ffc107',
-    'low_risk': '#28a745',
-    'uncertain': '#6c757d',
-}
-
-
-def _nodule_risk_style(nodule):
-    """Dual-factor risk: malignancy probability + detection confidence."""
-    mal = nodule.get('malignancy_probability', 0.5)
-    conf = nodule.get('detection_confidence', 0.5)
-
-    if conf < 0.60:
-        return 'uncertain', RISK_COLORS['uncertain'], '--'
-    if mal > 0.70:
-        return 'high_risk', RISK_COLORS['high_risk'], '-'
-    elif mal > 0.40:
-        return 'medium_risk', RISK_COLORS['medium_risk'], '-'
-    else:
-        return 'low_risk', RISK_COLORS['low_risk'], '-'
-
-
-def create_visualization(ct_scan, nodules, patient_id='Unknown'):
-    """Professional 3-panel PACS-style medical imaging visualization.
-
-    Layout:
-      Row 0: Axial (main) | Coronal | Sagittal   — all nodules marked
-      Row 1: Patient summary bar
-      Row 2: Per-nodule clinical detail text
-
-    Returns:
-        Base64-encoded PNG string
-    """
+def create_visualization(ct_scan, nodules):
+    """Create a 3-panel CT visualization with nodule overlays."""
     import matplotlib
+
     matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
+    import matplotlib.pyplot as plt
 
-    fig = plt.figure(figsize=(18, 6), facecolor='#0a0a0a')
-    gs = fig.add_gridspec(1, 3, wspace=0.25)
+    fig, axes = plt.subplots(1, 3, figsize=(18, 6), facecolor='#0a0a0a')
 
-    # ── Best axial slice (most nodules) ──
     if nodules:
         z_counts = {}
-        for n in nodules:
-            z = n['location'][0]
-            z_counts[z] = z_counts.get(z, 0) + 1
+        for nodule in nodules:
+            z_value = nodule['location'][0]
+            z_counts[z_value] = z_counts.get(z_value, 0) + 1
         best_z = max(z_counts, key=z_counts.get)
     else:
         best_z = ct_scan.shape[0] // 2
 
-    # ── Three anatomical views ──
-    ax_axial = fig.add_subplot(gs[0, 0])
-    ax_axial.set_facecolor('#0a0a0a')
-    ax_axial.imshow(ct_scan[best_z], cmap='gray', vmin=0, vmax=1)
-    ax_axial.set_title(f'Axial View (Slice {best_z})',
-                       fontsize=15, fontweight='bold', color='white', pad=10)
-    ax_axial.axis('off')
-
-    ax_coronal = fig.add_subplot(gs[0, 1])
-    ax_coronal.set_facecolor('#0a0a0a')
     cor_idx = ct_scan.shape[1] // 2
-    ax_coronal.imshow(ct_scan[:, cor_idx, :], cmap='gray', vmin=0, vmax=1,
-                      aspect='auto')
-    ax_coronal.set_title('Coronal View', fontsize=15, fontweight='bold',
-                         color='white', pad=10)
-    ax_coronal.axis('off')
-
-    ax_sagittal = fig.add_subplot(gs[0, 2])
-    ax_sagittal.set_facecolor('#0a0a0a')
     sag_idx = ct_scan.shape[2] // 2
-    ax_sagittal.imshow(ct_scan[:, :, sag_idx], cmap='gray', vmin=0, vmax=1,
-                       aspect='auto')
-    ax_sagittal.set_title('Sagittal View', fontsize=15, fontweight='bold',
-                          color='white', pad=10)
-    ax_sagittal.axis('off')
 
-    # ── Draw nodules on all three views ──
-    for i, nodule in enumerate(nodules):
+    axes[0].imshow(ct_scan[best_z], cmap='gray', vmin=0, vmax=1)
+    axes[1].imshow(ct_scan[:, cor_idx, :], cmap='gray', vmin=0, vmax=1, aspect='auto')
+    axes[2].imshow(ct_scan[:, :, sag_idx], cmap='gray', vmin=0, vmax=1, aspect='auto')
+
+    titles = [f'Axial View (Slice {best_z})', 'Coronal View', 'Sagittal View']
+    for axis, title in zip(axes, titles):
+        axis.set_title(title, color='white', fontsize=14, fontweight='bold')
+        axis.axis('off')
+        axis.set_facecolor('#0a0a0a')
+
+    colors = {'HIGH': '#dc3545', 'MEDIUM': '#ffc107', 'LOW': '#28a745'}
+    for idx, nodule in enumerate(nodules):
         z, y, x = nodule['location']
-        radius = max(nodule.get('radius', 10), 8) * 1.5
-        _, color, ls = _nodule_risk_style(nodule)
+        radius = max(nodule.get('radius', 8), 6) * 1.5
+        color = colors.get(nodule.get('risk_level', 'MEDIUM'), '#ffc107')
 
-        # Axial view — show if within ±5 slices of displayed slice
         if abs(z - best_z) <= 5:
-            ax_axial.add_patch(mpatches.Circle(
-                (x, y), radius, lw=3, edgecolor=color,
-                facecolor='none', linestyle=ls))
-            ax_axial.text(x, y - radius - 8,
-                          f"#{i+1}",
-                          color=color, fontsize=12, fontweight='bold',
-                          ha='center', va='bottom',
-                          bbox=dict(boxstyle='round,pad=0.4',
-                                    facecolor='black', alpha=0.8,
-                                    edgecolor=color))
+            axes[0].add_patch(mpatches.Circle((x, y), radius, lw=3, edgecolor=color, facecolor='none'))
+            axes[0].text(
+                x,
+                y - radius - 8,
+                f"#{idx + 1}",
+                color=color,
+                fontsize=12,
+                fontweight='bold',
+                ha='center',
+                bbox=dict(boxstyle='round,pad=0.4', facecolor='black', alpha=0.8, edgecolor=color),
+            )
 
-        # Coronal view (x, z)
-        r_small = radius * 0.6
-        ax_coronal.add_patch(mpatches.Circle(
-            (x, z), r_small, lw=2, edgecolor=color,
-            facecolor='none', linestyle=ls))
-        ax_coronal.text(x, z - r_small - 4, f"#{i+1}",
-                        color=color, fontsize=10, fontweight='bold',
-                        ha='center',
-                        bbox=dict(boxstyle='round,pad=0.2', facecolor='black',
-                                  edgecolor='none', alpha=0.5))
+        axes[1].add_patch(mpatches.Circle((x, z), radius * 0.6, lw=2, edgecolor=color, facecolor='none'))
+        axes[1].text(
+            x,
+            z - radius * 0.6 - 4,
+            f"#{idx + 1}",
+            color=color,
+            fontsize=10,
+            fontweight='bold',
+            ha='center',
+            bbox=dict(boxstyle='round,pad=0.2', facecolor='black', alpha=0.6, edgecolor='none'),
+        )
 
-        # Sagittal view (y, z)
-        ax_sagittal.add_patch(mpatches.Circle(
-            (y, z), r_small, lw=2, edgecolor=color,
-            facecolor='none', linestyle=ls))
-        ax_sagittal.text(y, z - r_small - 4, f"#{i+1}",
-                         color=color, fontsize=10, fontweight='bold',
-                         ha='center',
-                         bbox=dict(boxstyle='round,pad=0.2', facecolor='black',
-                                   edgecolor='none', alpha=0.5))
+        axes[2].add_patch(mpatches.Circle((y, z), radius * 0.6, lw=2, edgecolor=color, facecolor='none'))
+        axes[2].text(
+            y,
+            z - radius * 0.6 - 4,
+            f"#{idx + 1}",
+            color=color,
+            fontsize=10,
+            fontweight='bold',
+            ha='center',
+            bbox=dict(boxstyle='round,pad=0.2', facecolor='black', alpha=0.6, edgecolor='none'),
+        )
 
-    plt.tight_layout()
+    plt.tight_layout(pad=2.0)
 
     buf = BytesIO()
-    plt.savefig(buf, format='png', bbox_inches='tight', dpi=150,
-                facecolor='#0a0a0a', edgecolor='none')
+    plt.savefig(buf, format='png', dpi=150, bbox_inches='tight', facecolor='#0a0a0a')
     buf.seek(0)
     plt.close(fig)
-
     return base64.b64encode(buf.read()).decode('utf-8')
 
 
-# ── Routes ──
-
 @app.route('/')
 def index():
-    """Serve the main UI."""
+    """Serve the UI."""
     return render_template('index.html')
 
 
 @app.route('/health')
 def health():
-    return jsonify({'status': 'healthy', 'service': 'oncovision-x', 'demo_mode': _demo_only})
+    """Basic health check."""
+    return jsonify({'status': 'healthy'})
 
 
 @app.route('/api/analyze', methods=['POST'])
-def analyze_scan():
-    """Upload and analyze a CT scan.
-
-    Accepts multipart form with:
-      - ct_scan: .mhd / .nii.gz / .nii / .npy / .npz file
-      - patient_id: optional
-      - scan_date: optional
-    """
+def analyze():
+    """Main analysis endpoint."""
     try:
         system = get_system()
-        if system is None:
-            return jsonify(_demo_response(
-                request.form.get('patient_id', 'DEMO'),
-                request.form.get('scan_date', '')
-            ))
+        files = request.files.getlist('ct_scan')
+        if not files or files[0].filename == '':
+            return jsonify({'error': 'No file uploaded'}), 400
 
-        if 'ct_scan' not in request.files:
-            return jsonify({'status': 'error', 'message': 'No file uploaded'}), 400
+        with tempfile.TemporaryDirectory() as tmpdir:
+            primary = None
+            for upload in files:
+                target = os.path.join(tmpdir, upload.filename)
+                upload.save(target)
+                ext = Path(upload.filename).suffix.lower()
+                if upload.filename.endswith('.nii.gz'):
+                    ext = '.nii.gz'
+                if ext in ['.mhd', '.nii', '.nii.gz', '.npz', '.npy']:
+                    primary = target
 
-        file = request.files['ct_scan']
-        if file.filename == '':
-            return jsonify({'status': 'error', 'message': 'Empty filename'}), 400
+            if not primary:
+                return jsonify({'error': 'No valid scan file'}), 400
 
-        patient_id = request.form.get('patient_id', 'UNKNOWN')
-        scan_date = request.form.get('scan_date', '')
+            report = system.analyze_patient(primary)
+            visualization = None
+            if report.get('ct_scan') is not None and report['num_nodules'] > 0:
+                visualization = create_visualization(report['ct_scan'], report['nodules'])
 
-        # Save to temp file
-        suffix = Path(file.filename).suffix
-        if file.filename.endswith('.nii.gz'):
-            suffix = '.nii.gz'
-        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-            file.save(tmp.name)
-            tmp_path = tmp.name
-
-        try:
-            report = system.analyze_patient(tmp_path)
-        finally:
-            os.unlink(tmp_path)
-
-        # Generate visualization
-        viz_b64 = None
-        if report.get('ct_scan') is not None and report['num_nodules'] > 0:
-            viz_b64 = create_visualization(report['ct_scan'], report['nodules'], patient_id)
-
-        # Build response (strip large arrays)
         nodules_json = []
-        for i, n in enumerate(report.get('nodules', [])):
+        for idx, nodule in enumerate(report.get('nodules', []), start=1):
             nodules_json.append({
-                'nodule_id': i + 1,
-                'location': format_loc(n.get('location')),
-                'detection_confidence': round(n.get('detection_confidence', 0) * 100, 1),
-                'malignancy_probability': round(n.get('malignancy_probability', 0) * 100, 1),
-                'risk_level': n.get('risk_level', 'LOW'),
-                'recommendation': n.get('recommendation', ''),
+                'nodule_id': idx,
+                'location': f"({nodule['location'][0]}, {nodule['location'][1]}, {nodule['location'][2]})",
+                'detection_confidence': round(nodule.get('detection_confidence', 0) * 100, 1),
+                'malignancy_probability': round(nodule.get('malignancy_probability', 0) * 100, 1),
+                'risk_level': nodule.get('risk_level', 'LOW'),
+                'recommendation': nodule.get('recommendation', 'Consult physician'),
             })
 
         return jsonify({
             'status': report['status'],
-            'patient_id': patient_id,
-            'scan_date': scan_date,
+            'next_steps': report.get('next_steps', 'Consult physician for evaluation.'),
             'analysis': {
                 'num_nodules_detected': report['num_nodules'],
                 'overall_risk': report['patient_risk'],
-                'risk_score': round(report.get('patient_risk_score', 0) * 100, 2),
+                'risk_score': round(report.get('patient_risk_score', 0) * 100, 1),
                 'nodules': nodules_json,
             },
-            'visualization': viz_b64,
-            'next_steps': report.get('next_steps', ''),
+            'visualization': visualization,
             'timing': report.get('timing', {}),
         })
 
-    except Exception as e:
+    except Exception as exc:
         import traceback
+
         traceback.print_exc()
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        return jsonify({'error': str(exc)}), 500
 
-
-@app.route('/api/demo-analyze', methods=['POST'])
-def demo_analyze():
-    """Demo endpoint — returns simulated results without any model."""
-    patient_id = request.form.get('patient_id', 'DEMO-001')
-    scan_date = request.form.get('scan_date', '2026-03-15')
-    return jsonify(_demo_response(patient_id, scan_date))
-
-
-# Keep old /demo-predict for backward compat
-@app.route('/demo-predict', methods=['POST'])
-def demo_predict_compat():
-    return demo_analyze()
-
-
-def format_loc(loc):
-    if loc is None:
-        return 'N/A'
-    return f"({loc[0]}, {loc[1]}, {loc[2]})"
-
-
-def _demo_response(patient_id, scan_date):
-    """Generate simulated demo results."""
-    from src.pipeline.end_to_end import classify_risk, get_recommendation, get_clinical_recommendation
-    demo_nodules = [
-        {'id': 1, 'prob': 0.15, 'det': 92.3, 'loc': '(145, 220, 185)'},
-        {'id': 2, 'prob': 0.52, 'det': 88.7, 'loc': '(98, 310, 142)'},
-        {'id': 3, 'prob': 0.87, 'det': 96.1, 'loc': '(178, 165, 208)'},
-    ]
-
-    results = []
-    for n in demo_nodules:
-        risk = classify_risk(n['prob'])
-        results.append({
-            'nodule_id': n['id'],
-            'location': n['loc'],
-            'detection_confidence': n['det'],
-            'malignancy_probability': round(n['prob'] * 100, 1),
-            'risk_level': risk,
-            'recommendation': get_recommendation(risk),
-        })
-
-    max_prob = max(n['prob'] for n in demo_nodules)
-    overall = classify_risk(max_prob)
-
-    return {
-        'status': 'SUCCESS',
-        'patient_id': patient_id,
-        'scan_date': scan_date,
-        'analysis': {
-            'num_nodules_detected': len(demo_nodules),
-            'overall_risk': overall,
-            'risk_score': round(max_prob * 100, 2),
-            'nodules': results,
-        },
-        'visualization': None,
-        'next_steps': get_clinical_recommendation(overall),
-        'timing': {'preprocess_sec': 1.2, 'detect_sec': 0.8, 'total_sec': 2.3},
-    }
-
-
-# ── Entry ──
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='OncoVision-X Web Demo')
-    parser.add_argument('--port', type=int, default=5000)
-    parser.add_argument('--host', type=str, default='0.0.0.0')
-    parser.add_argument('--debug', action='store_true')
-    parser.add_argument('--demo', action='store_true',
-                        help='Demo-only mode (no model loading)')
-    args = parser.parse_args()
-
-    _demo_only = args.demo
-
-    print(f"\n  🫁 OncoVision-X Web Demo")
-    print(f"  {'DEMO MODE — no models loaded' if _demo_only else 'Full mode'}")
-    print(f"  http://localhost:{args.port}\n")
-
-    app.run(host=args.host, port=args.port, debug=args.debug)
+    print("\nOncoVision-X Web Demo\n")
+    app.run(host='0.0.0.0', port=5000, debug=False)

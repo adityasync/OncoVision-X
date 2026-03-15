@@ -642,9 +642,12 @@
             <form id="uploadForm" enctype="multipart/form-data">
                 <div class="upload-zone" id="uploadZone">
                     <div class="upload-icon">🔬</div>
-                    <p>Drop CT scan here or click to browse</p>
-                    <span class="formats">Supported: .mhd, .nii.gz, .nii, .npy, .npz</span>
-                    <input type="file" name="ct_scan" id="fileInput" accept=".mhd,.nii,.nii.gz,.npy,.npz">
+                    <p>Click or drag to upload scan(s)</p>
+                    <p class="formats">Supported: .nii.gz, .nii, .npz, .npy, .mhd + .raw</p>
+                    <p style="font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 5px;">
+                        Select both .mhd and .raw files together for MHD uploads.
+                    </p>
+                    <input type="file" name="ct_scan" id="fileInput" accept=".mhd,.raw,.zraw,.nii,.nii.gz,.npy,.npz" multiple>
                 </div>
 
                 <div class="file-selected" id="fileSelected">
@@ -728,6 +731,7 @@
             <div class="card recommendation" id="recommendationCard">
                 <h4>📋 Clinical Recommendation</h4>
                 <p id="recommendationText">—</p>
+                <div id="timingContainer"></div>
             </div>
 
             <div style="text-align:center">
@@ -753,7 +757,11 @@
 
         fileInput.addEventListener('change', () => {
             if (fileInput.files.length > 0) {
-                fileName.textContent = fileInput.files[0].name;
+                if (fileInput.files.length === 1) {
+                    fileName.textContent = fileInput.files[0].name;
+                } else {
+                    fileName.textContent = `${fileInput.files.length} files selected`;
+                }
                 fileSelected.classList.add('visible');
             }
         });
@@ -772,7 +780,11 @@
             uploadZone.classList.remove('drag-over');
             if (e.dataTransfer.files.length > 0) {
                 fileInput.files = e.dataTransfer.files;
-                fileName.textContent = e.dataTransfer.files[0].name;
+                if (fileInput.files.length === 1) {
+                    fileName.textContent = fileInput.files[0].name;
+                } else {
+                    fileName.textContent = `${fileInput.files.length} files selected`;
+                }
                 fileSelected.classList.add('visible');
             }
         });
@@ -853,6 +865,8 @@
 
             analysis.nodules.forEach(nodule => {
                 const risk = nodule.risk_level.toLowerCase();
+                const malignancyProbability = Number(nodule.malignancy_probability ?? 0);
+                const scoreWidth = `${Math.max(0, Math.min(100, malignancyProbability))}%`;
                 const card = document.createElement('div');
                 card.className = 'nodule-card';
                 card.innerHTML = `
@@ -871,16 +885,16 @@
                         </div>
                         <div class="detail">
                             <span class="detail-label">Malignancy Probability</span>
-                            <span class="detail-value" style="color: var(--risk-${risk}); font-weight: 600;">${nodule.malignancy_probability}%</span>
+                            <span class="detail-value" style="color: var(--risk-${risk}); font-weight: 600;">${malignancyProbability.toFixed(1)}%</span>
                         </div>
                         <div class="detail">
                             <span class="detail-label">Recommendation</span>
-                            <span class="detail-value">${nodule.recommendation}</span>
+                            <span class="detail-value">${nodule.recommendation || '—'}</span>
                         </div>
                         <div class="prob-bar-container">
                             <span class="detail-label">Malignancy Score</span>
                             <div class="prob-bar-bg">
-                                <div class="prob-bar-fill ${risk}" style="width: 0%;" data-width="${nodule.malignancy_probability}%"></div>
+                                <div class="prob-bar-fill ${risk}" style="width: 0%;" data-width="${scoreWidth}"></div>
                             </div>
                         </div>
                     </div>
@@ -905,15 +919,17 @@
             }
 
             // Recommendation
-            document.getElementById('recommendationText').textContent = data.next_steps;
+            document.getElementById('recommendationText').textContent = data.next_steps || '—';
 
             // Timing
+            const timingContainer = document.getElementById('timingContainer');
+            timingContainer.innerHTML = '';
             if (data.timing) {
                 let timingHtml = '<div class="timing-row">';
                 if (data.timing.preprocess_sec != null) timingHtml += `<div class="timing-item">Preprocess: <span>${data.timing.preprocess_sec}s</span></div>`;
                 if (data.timing.detect_sec != null) timingHtml += `<div class="timing-item">Detection: <span>${data.timing.detect_sec}s</span></div>`;
                 timingHtml += `<div class="timing-item">Total: <span>${data.timing.total_sec}s</span></div></div>`;
-                document.getElementById('recommendationCard').insertAdjacentHTML('beforeend', timingHtml);
+                timingContainer.insertAdjacentHTML('beforeend', timingHtml);
             }
 
             // Show results
