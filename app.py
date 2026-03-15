@@ -104,9 +104,8 @@ def create_visualization(ct_scan, nodules, patient_id='Unknown'):
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
 
-    fig = plt.figure(figsize=(20, 14), facecolor='#0a0a0a')
-    gs = fig.add_gridspec(3, 4, hspace=0.35, wspace=0.25,
-                          height_ratios=[3, 0.8, 2])
+    fig = plt.figure(figsize=(18, 6), facecolor='#0a0a0a')
+    gs = fig.add_gridspec(1, 3, wspace=0.25)
 
     # ── Best axial slice (most nodules) ──
     if nodules:
@@ -118,29 +117,29 @@ def create_visualization(ct_scan, nodules, patient_id='Unknown'):
     else:
         best_z = ct_scan.shape[0] // 2
 
-    # ── Row 0: Three anatomical views ──
-    ax_axial = fig.add_subplot(gs[0, 0:2])
+    # ── Three anatomical views ──
+    ax_axial = fig.add_subplot(gs[0, 0])
     ax_axial.set_facecolor('#0a0a0a')
     ax_axial.imshow(ct_scan[best_z], cmap='gray', vmin=0, vmax=1)
-    ax_axial.set_title(f'Axial View  (Slice {best_z})',
+    ax_axial.set_title(f'Axial View (Slice {best_z})',
                        fontsize=15, fontweight='bold', color='white', pad=10)
     ax_axial.axis('off')
 
-    ax_coronal = fig.add_subplot(gs[0, 2])
+    ax_coronal = fig.add_subplot(gs[0, 1])
     ax_coronal.set_facecolor('#0a0a0a')
     cor_idx = ct_scan.shape[1] // 2
     ax_coronal.imshow(ct_scan[:, cor_idx, :], cmap='gray', vmin=0, vmax=1,
                       aspect='auto')
-    ax_coronal.set_title('Coronal View', fontsize=13, fontweight='bold',
+    ax_coronal.set_title('Coronal View', fontsize=15, fontweight='bold',
                          color='white', pad=10)
     ax_coronal.axis('off')
 
-    ax_sagittal = fig.add_subplot(gs[0, 3])
+    ax_sagittal = fig.add_subplot(gs[0, 2])
     ax_sagittal.set_facecolor('#0a0a0a')
     sag_idx = ct_scan.shape[2] // 2
     ax_sagittal.imshow(ct_scan[:, :, sag_idx], cmap='gray', vmin=0, vmax=1,
                        aspect='auto')
-    ax_sagittal.set_title('Sagittal View', fontsize=13, fontweight='bold',
+    ax_sagittal.set_title('Sagittal View', fontsize=15, fontweight='bold',
                           color='white', pad=10)
     ax_sagittal.axis('off')
 
@@ -149,7 +148,6 @@ def create_visualization(ct_scan, nodules, patient_id='Unknown'):
         z, y, x = nodule['location']
         radius = max(nodule.get('radius', 10), 8) * 1.5
         _, color, ls = _nodule_risk_style(nodule)
-        mal = nodule.get('malignancy_probability', 0.5)
 
         # Axial view — show if within ±5 slices of displayed slice
         if abs(z - best_z) <= 5:
@@ -157,8 +155,8 @@ def create_visualization(ct_scan, nodules, patient_id='Unknown'):
                 (x, y), radius, lw=3, edgecolor=color,
                 facecolor='none', linestyle=ls))
             ax_axial.text(x, y - radius - 8,
-                          f"#{i+1}\n{mal*100:.0f}%",
-                          color=color, fontsize=11, fontweight='bold',
+                          f"#{i+1}",
+                          color=color, fontsize=12, fontweight='bold',
                           ha='center', va='bottom',
                           bbox=dict(boxstyle='round,pad=0.4',
                                     facecolor='black', alpha=0.8,
@@ -169,90 +167,23 @@ def create_visualization(ct_scan, nodules, patient_id='Unknown'):
         ax_coronal.add_patch(mpatches.Circle(
             (x, z), r_small, lw=2, edgecolor=color,
             facecolor='none', linestyle=ls))
-        ax_coronal.text(x, z - r_small - 4, f"{i+1}",
-                        color=color, fontsize=9, fontweight='bold',
-                        ha='center')
+        ax_coronal.text(x, z - r_small - 4, f"#{i+1}",
+                        color=color, fontsize=10, fontweight='bold',
+                        ha='center',
+                        bbox=dict(boxstyle='round,pad=0.2', facecolor='black',
+                                  edgecolor='none', alpha=0.5))
 
         # Sagittal view (y, z)
         ax_sagittal.add_patch(mpatches.Circle(
             (y, z), r_small, lw=2, edgecolor=color,
             facecolor='none', linestyle=ls))
-        ax_sagittal.text(y, z - r_small - 4, f"{i+1}",
-                         color=color, fontsize=9, fontweight='bold',
-                         ha='center')
+        ax_sagittal.text(y, z - r_small - 4, f"#{i+1}",
+                         color=color, fontsize=10, fontweight='bold',
+                         ha='center',
+                         bbox=dict(boxstyle='round,pad=0.2', facecolor='black',
+                                   edgecolor='none', alpha=0.5))
 
-    # ── Row 1: Summary bar ──
-    ax_summary = fig.add_subplot(gs[1, :])
-    ax_summary.axis('off')
-
-    if nodules:
-        high_n = sum(1 for n in nodules if n.get('malignancy_probability', 0) > 0.70)
-        if high_n > 0:
-            banner_color, banner_label = RISK_COLORS['high_risk'], 'HIGH RISK'
-        elif any(n.get('malignancy_probability', 0) > 0.40 for n in nodules):
-            banner_color, banner_label = RISK_COLORS['medium_risk'], 'MEDIUM RISK'
-        else:
-            banner_color, banner_label = RISK_COLORS['low_risk'], 'LOW RISK'
-    else:
-        banner_color, banner_label = RISK_COLORS['low_risk'], 'NO NODULES'
-
-    summary = (
-        f"Patient: {patient_id}    |    "
-        f"Nodules: {len(nodules)}    |    "
-        f"Assessment: {banner_label}\n"
-        "Legend:  \U0001f534 High Risk (>70%)   "
-        "\U0001f7e0 Medium (40-70%)   "
-        "\U0001f7e2 Low (<40%)   "
-        "\u26aa Uncertain (<60% conf)"
-    )
-    ax_summary.text(
-        0.5, 0.5, summary, fontsize=13, ha='center', va='center',
-        color='white', fontweight='bold',
-        bbox=dict(boxstyle='round,pad=0.8', facecolor=banner_color, alpha=0.85))
-
-    # ── Row 2: Per-nodule details ──
-    ax_details = fig.add_subplot(gs[2, :])
-    ax_details.axis('off')
-
-    if nodules:
-        lines = ['DETAILED NODULE ANALYSIS\n']
-        for i, n in enumerate(nodules):
-            z, y, x = n['location']
-            conf = n.get('detection_confidence', 0) * 100
-            mal = n.get('malignancy_probability', 0) * 100
-            diam = n.get('radius', 5) * 2
-            risk_tag, _, _ = _nodule_risk_style(n)
-
-            if diam < 4:
-                rec = 'Routine follow-up (likely benign)'
-            elif diam < 8:
-                rec = 'Repeat scan in 6-12 months'
-            elif diam < 20:
-                rec = 'Biopsy or close monitoring recommended'
-            else:
-                rec = 'Urgent evaluation required'
-
-            lines.append(
-                f"Nodule #{i+1} ({risk_tag.replace('_',' ').upper()})\n"
-                f"  Location: slice {z}, pos ({x}, {y})    "
-                f"Size: ~{diam:.0f}mm    "
-                f"Confidence: {conf:.0f}%    "
-                f"Malignancy: {mal:.0f}%\n"
-                f"  Recommendation: {rec}\n"
-            )
-
-        ax_details.text(0.03, 0.95, '\n'.join(lines),
-                        fontsize=11, ha='left', va='top',
-                        color='white', family='monospace',
-                        bbox=dict(boxstyle='round,pad=0.8',
-                                  facecolor='#1a1a1a', alpha=0.9))
-    else:
-        ax_details.text(0.5, 0.5,
-                        '✓ No suspicious nodules detected in this scan.',
-                        fontsize=14, ha='center', va='center',
-                        color='white', fontweight='bold',
-                        bbox=dict(boxstyle='round,pad=1',
-                                  facecolor=RISK_COLORS['low_risk'], alpha=0.8))
+    plt.tight_layout()
 
     buf = BytesIO()
     plt.savefig(buf, format='png', bbox_inches='tight', dpi=150,
