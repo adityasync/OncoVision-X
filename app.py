@@ -217,5 +217,7 @@ def frontend_files(path):
 
 
 if __name__ == '__main__':
-    print("\nOncoVision-X Web Demo\n")
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    # Hugging Face Spaces use port 7860 by default
+    port = int(os.environ.get('PORT', 7860))
+    print(f"\nOncoVision-X Web Demo (Port: {port})\n")
+    app.run(host='0.0.0.0', port=port, debug=False)
