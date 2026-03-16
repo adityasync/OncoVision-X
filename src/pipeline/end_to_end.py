@@ -24,22 +24,129 @@ def classify_risk(probability, low_threshold=0.3, high_threshold=0.7):
     return 'HIGH'
 
 
-def get_recommendation(risk_level):
-    """Per-nodule clinical recommendation."""
-    return {
-        'LOW': 'Continue routine screening',
-        'MEDIUM': 'Follow-up scan in 6 months recommended',
-        'HIGH': 'Immediate clinical evaluation recommended',
-    }.get(risk_level, 'Consult physician')
+def classify_size_bucket(radius):
+    """Group candidate size into coarse clinical buckets."""
+    diameter_mm = max(radius * 2.0, 0.0)
+    if diameter_mm < 6:
+        return 'SMALL'
+    if diameter_mm < 10:
+        return 'INTERMEDIATE'
+    return 'LARGE'
 
 
-def get_clinical_recommendation(patient_risk):
-    """Overall patient-level recommendation."""
+def describe_nodule_characteristics(nodule_data):
+    """Build structured descriptors used by recommendation templates."""
+    confidence = float(nodule_data.get('detection_confidence', 0.0))
+    malignancy = float(nodule_data.get('malignancy_probability', 0.0))
+    radius = float(nodule_data.get('radius', 0.0))
+    size_bucket = classify_size_bucket(radius)
     return {
-        'LOW': 'No immediate action required. Continue routine screening.',
-        'MEDIUM': 'Schedule follow-up CT in 3-6 months. Monitor for changes.',
-        'HIGH': 'HIGH RISK: Immediate referral to pulmonologist recommended. Consider biopsy.',
-    }.get(patient_risk, 'Consult physician for evaluation.')
+        'confidence': confidence,
+        'malignancy': malignancy,
+        'radius': radius,
+        'size_bucket': size_bucket,
+        'high_confidence': confidence >= 0.8,
+        'borderline_confidence': confidence < 0.6,
+        'marked_malignancy': malignancy >= 0.75,
+        'moderate_malignancy': 0.45 <= malignancy < 0.75,
+    }
+
+
+def summarize_distribution(nodules):
+    """Describe whether findings are solitary, paired, or multifocal."""
+    count = len(nodules)
+    if count <= 1:
+        return 'solitary'
+    if count == 2:
+        return 'paired'
+    return 'multifocal'
+
+
+def get_recommendation(nodule_data, total_nodules=1):
+    """Per-nodule recommendation with richer condition-based guidance."""
+    risk_level = str(nodule_data.get('risk_level', 'LOW')).upper()
+    traits = describe_nodule_characteristics(nodule_data)
+    location_text = str(nodule_data.get('location', 'N/A'))
+
+    if risk_level == 'HIGH':
+        if traits['marked_malignancy'] and traits['size_bucket'] == 'LARGE':
+            recommendation = 'Dominant suspicious lesion identified; urgent pulmonology or thoracic review is advised and tissue diagnosis planning should be considered.'
+        elif traits['high_confidence']:
+            recommendation = 'High-confidence suspicious finding; expedited specialist review is advised with short-interval diagnostic follow-up.'
+        else:
+            recommendation = 'Prompt physician review is advised to confirm the finding and define the next diagnostic step.'
+    elif risk_level == 'MEDIUM':
+        if traits['size_bucket'] == 'LARGE':
+            recommendation = 'Diagnostic chest CT follow-up within 2-3 months is recommended because of lesion size.'
+        elif traits['moderate_malignancy'] and traits['high_confidence']:
+            recommendation = 'Short-interval follow-up imaging in about 3 months is recommended.'
+        elif traits['borderline_confidence']:
+            recommendation = 'Correlate with prior imaging and consider repeat CT in 3-6 months if clinically appropriate.'
+        else:
+            recommendation = 'Follow-up CT in 3-6 months is recommended to document stability.'
+    else:
+        if traits['size_bucket'] == 'LARGE':
+            recommendation = 'Although risk is low, lesion size supports interval imaging to confirm stability.'
+        elif traits['borderline_confidence']:
+            recommendation = 'Low-risk finding; compare with prior scans and continue routine surveillance.'
+        else:
+            recommendation = 'Continue routine screening and document this finding for interval comparison.'
+
+    if traits['size_bucket'] == 'LARGE':
+        recommendation += ' The apparent lesion size merits direct comparison with prior studies if available.'
+    elif traits['size_bucket'] == 'SMALL' and risk_level != 'HIGH':
+        recommendation += ' Small lesion size favors surveillance over immediate invasive workup unless clinical history suggests otherwise.'
+
+    if traits['borderline_confidence']:
+        recommendation += ' Confidence is limited, so correlation with multiplanar review and prior imaging is especially important.'
+    elif traits['high_confidence']:
+        recommendation += ' Detection confidence is high enough to prioritize this focus during review.'
+
+    if total_nodules >= 3 and risk_level != 'HIGH':
+        recommendation += ' Because multiple nodules are present, compare all visible foci with prior studies at the next review.'
+    elif total_nodules == 2 and risk_level != 'HIGH':
+        recommendation += ' A paired-finding pattern is present, so interval comparison of both sites is recommended.'
+
+    recommendation += f' Reported location for review: {location_text}.'
+
+    return recommendation
+
+
+def get_clinical_recommendation(patient_risk, nodules):
+    """Overall patient-level recommendation with aggregate finding context."""
+    num_nodules = len(nodules)
+    max_malignancy = max((float(nodule.get('malignancy_probability', 0.0)) for nodule in nodules), default=0.0)
+    max_confidence = max((float(nodule.get('detection_confidence', 0.0)) for nodule in nodules), default=0.0)
+    largest_radius = max((float(nodule.get('radius', 0.0)) for nodule in nodules), default=0.0)
+    size_bucket = classify_size_bucket(largest_radius)
+    distribution = summarize_distribution(nodules)
+
+    if num_nodules == 0:
+        return 'No immediate action is suggested. Continue routine screening and retain this study for future comparison.'
+
+    if patient_risk == 'HIGH':
+        if num_nodules >= 2:
+            return 'Multiple suspicious findings are present. Prompt pulmonology or thoracic review is recommended, with diagnostic workup prioritized and all dominant foci correlated across views.'
+        if size_bucket == 'LARGE' or max_malignancy >= 0.8:
+            return 'A dominant suspicious lesion is present. Urgent specialist assessment and diagnostic planning are recommended.'
+        return 'High-risk imaging findings warrant prompt physician review and short-interval diagnostic follow-up.'
+
+    if patient_risk == 'MEDIUM':
+        if num_nodules >= 3:
+            return 'Several indeterminate nodules are present. Short-interval CT follow-up and comparison with prior scans are recommended.'
+        if size_bucket == 'LARGE':
+            return 'An intermediate-risk lesion with substantial size is present. Repeat diagnostic imaging within 2-3 months is recommended.'
+        if max_confidence < 0.6:
+            return 'Findings are indeterminate with limited confidence. Correlation with prior imaging and clinical context is recommended.'
+        return f'Schedule follow-up CT in 3-6 months and compare this {distribution} finding pattern with any prior chest imaging.'
+
+    if num_nodules >= 3:
+        return 'Low-risk multifocal findings are present. Routine surveillance with prior-study comparison is recommended.'
+    if size_bucket == 'LARGE':
+        return 'Overall risk is low, but lesion size supports interval imaging to confirm stability.'
+    if max_confidence < 0.6:
+        return 'No immediate intervention is suggested. Keep this study for comparison and continue routine screening.'
+    return f'No immediate action is required. Continue routine screening and compare this {distribution} finding pattern with future studies for stability.'
 
 
 def format_location(location):
@@ -216,7 +323,7 @@ class LungCancerDetectionSystem:
                 'ct_scan': ct_01,
                 'metadata': metadata,
                 'lung_mask': lung_mask,
-                'next_steps': get_clinical_recommendation('LOW'),
+                'next_steps': get_clinical_recommendation('LOW', []),
                 'timing': {
                     'preprocess_sec': round(t_preprocess, 2),
                     'total_sec': round(time.time() - t0, 2),
@@ -227,7 +334,7 @@ class LungCancerDetectionSystem:
             mal_prob = self._calculate_clinical_heuristic(nodule)
             nodule['malignancy_probability'] = mal_prob
             nodule['risk_level'] = classify_risk(mal_prob)
-            nodule['recommendation'] = get_recommendation(nodule['risk_level'])
+            nodule['recommendation'] = get_recommendation(nodule, total_nodules=len(detected))
 
         max_mal = max(nodule['malignancy_probability'] for nodule in detected)
         num_high = sum(1 for nodule in detected if nodule['risk_level'] == 'HIGH')
@@ -250,7 +357,7 @@ class LungCancerDetectionSystem:
             'ct_scan': ct_01,
             'metadata': metadata,
             'lung_mask': lung_mask,
-            'next_steps': get_clinical_recommendation(patient_risk),
+            'next_steps': get_clinical_recommendation(patient_risk, detected),
             'timing': {
                 'preprocess_sec': round(t_preprocess, 2),
                 'detect_sec': round(t_detect - t_preprocess, 2),

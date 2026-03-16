@@ -913,6 +913,7 @@ function generatePdfReport(previewOnly) {
         fileName: scan.fileSummary?.name || "-",
         fileSize: scan.fileSummary?.size || "-",
         nextSteps: scan.result.next_steps || "Consult physician for evaluation.",
+        clinicalHighlights: buildClinicalHighlights(analysis.nodules || [], scan.result.next_steps || "Consult physician for evaluation."),
         visualizationSrc: scanImage.src || "",
         riskColor: riskBanner.classList.contains("risk-banner--high")
             ? "#fee2e2"
@@ -993,6 +994,7 @@ h1{font-size:30px} h2{font-size:24px} p,li{font-size:13px;line-height:1.6}
 <p>Report Generated: ${reportData.generatedAt}</p>
 <div class="risk"><strong>Overall Risk: ${reportData.overallRisk}</strong><br>Maximum malignancy probability: ${reportData.riskScore}%</div>
 <p>${escapeHtml(reportData.nextSteps)}</p>
+<div class="box"><h3>Clinical Action Summary</h3>${reportData.clinicalHighlights.map((item) => `<p style="margin:0 0 8px">• ${escapeHtml(item)}</p>`).join("")}</div>
 <div class="grid">
 <div class="box"><strong>Patient</strong><p>${escapeHtml(reportData.patientName)}</p></div>
 <div class="box"><strong>MRN</strong><p>${escapeHtml(reportData.mrn)}</p></div>
@@ -1042,7 +1044,14 @@ async function createPdfDocument(scan, reportData, JsPdfCtor, filename) {
         getImageSize("/assets/logo.png"),
     ]);
     const viewImages = visualizationSrc ? await splitThreeViewVisualization(visualizationSrc) : [];
-    const totalPages = 2 + Math.max(viewImages.length, 1);
+    const detailedFindingsPages = estimateDetailedFindingsPages(
+        doc,
+        contentWidth,
+        reportData.nodules,
+        reportData.physicianNotes,
+        pageHeight,
+    );
+    const totalPages = 1 + detailedFindingsPages + Math.max(viewImages.length, 1);
 
     drawPdfPageHeader(doc, {
         title: "Lung Screening Imaging Report",
@@ -1062,6 +1071,7 @@ async function createPdfDocument(scan, reportData, JsPdfCtor, filename) {
         textColor: "#334155",
         lineHeight: 5.8,
     }) + 8;
+    y = drawHighlightsBlock(doc, margin, y, contentWidth, reportData.clinicalHighlights) + 6;
     drawInfoGrid(doc, margin, y, contentWidth, [
         ["Patient", reportData.patientName],
         ["MRN", reportData.mrn],
@@ -1073,6 +1083,7 @@ async function createPdfDocument(scan, reportData, JsPdfCtor, filename) {
     drawPdfFooter(doc, 1, totalPages);
 
     doc.addPage();
+    let currentPageNumber = 2;
     drawPdfPageHeader(doc, {
         title: "Detailed Findings",
         subtitleLines: [],
@@ -1080,12 +1091,22 @@ async function createPdfDocument(scan, reportData, JsPdfCtor, filename) {
         logoSize,
         watermarkSrc,
     });
-    y = 40;
+    y = 64;
     if (reportData.nodules.length) {
         reportData.nodules.forEach((nodule, index) => {
-            const blockHeight = 38;
-            if (y + blockHeight > pageHeight - 62) {
-                return;
+            const blockHeight = getNoduleBlockHeight(doc, contentWidth, nodule);
+            if (y + blockHeight > pageHeight - 26) {
+                drawPdfFooter(doc, currentPageNumber, totalPages);
+                doc.addPage();
+                currentPageNumber += 1;
+                drawPdfPageHeader(doc, {
+                    title: "Detailed Findings",
+                    subtitleLines: ["Continued findings for clinical review"],
+                    logoSrc,
+                    logoSize,
+                    watermarkSrc,
+                });
+                y = 64;
             }
             drawNoduleBlock(doc, margin, y, contentWidth, index + 1, nodule);
             y += blockHeight + 4;
@@ -1097,8 +1118,22 @@ async function createPdfDocument(scan, reportData, JsPdfCtor, filename) {
             lineHeight: 5.8,
         }) + 8;
     }
-    drawNotesBlock(doc, margin, Math.min(y, 215), contentWidth, reportData.physicianNotes);
-    drawPdfFooter(doc, 2, totalPages);
+    const notesHeight = getNotesBlockHeight(doc, contentWidth, reportData.physicianNotes);
+    if (y + notesHeight > pageHeight - 26) {
+        drawPdfFooter(doc, currentPageNumber, totalPages);
+        doc.addPage();
+        currentPageNumber += 1;
+        drawPdfPageHeader(doc, {
+            title: "Physician Notes",
+            subtitleLines: ["Continued findings and clinician comments"],
+            logoSrc,
+            logoSize,
+            watermarkSrc,
+        });
+        y = 64;
+    }
+    drawNotesBlock(doc, margin, y, contentWidth, reportData.physicianNotes);
+    drawPdfFooter(doc, currentPageNumber, totalPages);
 
     const labeledViews = viewImages.length
         ? viewImages.map((view, index) => ({
@@ -1138,7 +1173,7 @@ async function createPdfDocument(scan, reportData, JsPdfCtor, filename) {
                 lineHeight: 4.6,
             },
         );
-        drawPdfFooter(doc, 3 + index, totalPages);
+        drawPdfFooter(doc, currentPageNumber + 1 + index, totalPages);
     });
     doc.save(filename);
     toastLikeAlert("Report downloaded successfully.");
@@ -1219,10 +1254,62 @@ function drawInfoGrid(doc, x, y, width, items) {
     });
 }
 
-function drawNoduleBlock(doc, x, y, width, ordinal, nodule) {
+function drawHighlightsBlock(doc, x, y, width, items) {
+    const lineCounts = items.map((item) => doc.splitTextToSize(`• ${String(item)}`, width - 8).length);
+    const blockHeight = 11 + lineCounts.reduce((sum, count) => sum + count * 5, 0);
     doc.setDrawColor("#d7e0ea");
     doc.setFillColor(255, 255, 255);
-    doc.roundedRect(x, y, width, 38, 3, 3, "FD");
+    doc.roundedRect(x, y, width, blockHeight, 3, 3, "FD");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor("#0f172a");
+    doc.text("Clinical Action Summary", x + 4, y + 7);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    doc.setTextColor("#475569");
+    let cursorY = y + 13;
+    items.forEach((item, index) => {
+        const lines = doc.splitTextToSize(`• ${String(item)}`, width - 8);
+        doc.text(lines, x + 4, cursorY);
+        cursorY += lines.length * 5;
+    });
+    return y + blockHeight;
+}
+
+function getNoduleBlockHeight(doc, width, nodule) {
+    const location = doc.splitTextToSize(`Location: ${String(nodule.location || "-")}`, width - 114);
+    const recommendation = doc.splitTextToSize(`Recommendation: ${String(nodule.recommendation || "Consult physician.")}`, width - 114);
+    const rightColumnLines = location.length + recommendation.length;
+    return Math.max(54, 14 + rightColumnLines * 5.2);
+}
+
+function estimateDetailedFindingsPages(doc, width, nodules, notes, pageHeight) {
+    let pages = 1;
+    let y = 40;
+    if (nodules.length) {
+        nodules.forEach((nodule) => {
+            const blockHeight = getNoduleBlockHeight(doc, width, nodule);
+            if (y + blockHeight > pageHeight - 26) {
+                pages += 1;
+                y = 40;
+            }
+            y += blockHeight + 4;
+        });
+    } else {
+        y += 14;
+    }
+    const notesHeight = getNotesBlockHeight(doc, width, notes);
+    if (y + notesHeight > pageHeight - 26) {
+        pages += 1;
+    }
+    return pages;
+}
+
+function drawNoduleBlock(doc, x, y, width, ordinal, nodule) {
+    const blockHeight = getNoduleBlockHeight(doc, width, nodule);
+    doc.setDrawColor("#d7e0ea");
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(x, y, width, blockHeight, 3, 3, "FD");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.setTextColor("#0f172a");
@@ -1236,13 +1323,19 @@ function drawNoduleBlock(doc, x, y, width, ordinal, nodule) {
     const location = doc.splitTextToSize(`Location: ${String(nodule.location || "-")}`, width - 114);
     const recommendation = doc.splitTextToSize(`Recommendation: ${String(nodule.recommendation || "Consult physician.")}`, width - 114);
     doc.text(location, x + 110, y + 14);
-    doc.text(recommendation.slice(0, 3), x + 110, y + 21);
+    doc.text(recommendation, x + 110, y + 14 + location.length * 5.2 + 2);
+}
+
+function getNotesBlockHeight(doc, width, notes) {
+    const lines = doc.splitTextToSize(String(notes || ""), width - 8);
+    return Math.max(38, 16 + lines.length * 5);
 }
 
 function drawNotesBlock(doc, x, y, width, notes) {
+    const blockHeight = getNotesBlockHeight(doc, width, notes);
     doc.setDrawColor("#d7e0ea");
     doc.setFillColor(255, 255, 255);
-    doc.roundedRect(x, y, width, 38, 3, 3, "FD");
+    doc.roundedRect(x, y, width, blockHeight, 3, 3, "FD");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.setTextColor("#0f172a");
@@ -1308,6 +1401,29 @@ function drawWrappedTextBlock(doc, text, x, y, width, options = {}) {
 
 function pageNumberLabel(pageNumber, totalPages) {
     return `Page ${pageNumber} of ${totalPages}`;
+}
+
+function buildClinicalHighlights(nodules, nextSteps) {
+    const items = [];
+    if (nextSteps) {
+        items.push(nextSteps);
+    }
+    if (!nodules.length) {
+        items.push("No suspicious nodules were identified on the current review.");
+        return items;
+    }
+    const highRisk = nodules.filter((nodule) => String(nodule.risk_level || "").toUpperCase() === "HIGH").length;
+    const largestProbability = Math.max(...nodules.map((nodule) => Number(nodule.malignancy_probability || 0)));
+    items.push(`${nodules.length} finding${nodules.length > 1 ? "s are" : " is"} listed in this report for focused review.`);
+    if (highRisk > 0) {
+        items.push(`${highRisk} finding${highRisk > 1 ? "s are" : " is"} categorized as high risk and should be prioritized during review.`);
+    } else if (largestProbability >= 45) {
+        items.push("Intermediate-risk imaging features are present, so interval comparison is recommended.");
+    } else {
+        items.push("The visible findings are lower risk and are best managed with surveillance and future comparison.");
+    }
+    items.push("Compare the listed lesion locations with prior chest imaging whenever earlier studies are available.");
+    return items.slice(0, 4);
 }
 
 function escapeHtml(value) {
