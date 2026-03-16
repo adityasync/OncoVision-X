@@ -36,6 +36,8 @@
 
 html {
     scroll-behavior: smooth;
+    scrollbar-color: rgba(10, 22, 40, 0.28) rgba(255, 255, 255, 0.42);
+    scrollbar-width: thin;
 }
 
 body {
@@ -48,6 +50,25 @@ body {
         linear-gradient(180deg, #fcfdff 0%, #f3f6fb 100%);
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.42);
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(10, 22, 40, 0.28);
+    border: 2px solid rgba(255, 255, 255, 0.42);
+    border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(10, 22, 40, 0.4);
 }
 
 [hidden] {
@@ -1421,6 +1442,19 @@ a:focus-visible,
     align-items: start;
 }
 
+.footer-brand {
+    display: grid;
+    gap: 14px;
+    align-content: start;
+}
+
+.footer-brand__logo {
+    width: clamp(180px, 24vw, 240px);
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
 .footer-grid strong {
     color: var(--navy);
     font-size: 16px;
@@ -1460,6 +1494,16 @@ a:focus-visible,
     font-size: 12px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
+}
+
+#footerHelpButton,
+#footerSettingsButton {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
 }
 
 .modal-backdrop {

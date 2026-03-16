@@ -612,9 +612,8 @@ print(response.json()["analysis"])</code></pre>
 
         <footer class="footer">
             <div class="footer-grid">
-                <div>
-                    <strong>OncoVision-X</strong>
-                    <p>Medical imaging and AI diagnostics for lung nodule detection and risk review.</p>
+                <div class="footer-brand">
+                    <img class="footer-brand__logo" src="/assets/logo.png" alt="OncoVision-X">
                 </div>
                 <div>
                     <span class="footer-heading">Product</span>
@@ -635,7 +634,7 @@ print(response.json()["analysis"])</code></pre>
                 </div>
             </div>
             <div class="footer-strip">
-                <span>Clinical-grade AI workflow for upload, analysis, review, history, and technical validation.</span>
+                <span>Clinical workflow for upload, analysis, review, history, and technical validation.</span>
             </div>
         </footer>
     </div>
@@ -672,23 +671,38 @@ print(response.json()["analysis"])</code></pre>
 
         <div class="modal" id="helpModal" hidden>
             <div class="modal__header">
-                <h2>How can we help?</h2>
+                <h2>Documentation</h2>
                 <button class="icon-close" data-close-modal type="button">×</button>
             </div>
             <div class="modal__body">
-                <input class="search-input" type="search" placeholder="Search documentation">
+                <input class="search-input" type="search" placeholder="Search workflow notes">
                 <section class="settings-group">
-                    <h3>Common Topics</h3>
-                    <p>How to upload scans</p>
-                    <p>Understanding risk levels</p>
-                    <p>Export and sharing</p>
-                    <p>Troubleshooting</p>
+                    <h3>Getting Started</h3>
+                    <p>Upload one CT volume or use the sample study from the upload page.</p>
+                    <p>Wait for preprocessing, candidate review, and report assembly to complete before navigating away.</p>
+                    <p>Open the results page to inspect the scan views, summary banner, nodule cards, and timing metrics.</p>
                 </section>
                 <section class="settings-group">
-                    <h3>Video Tutorials</h3>
-                    <p>Getting started (2:30)</p>
-                    <p>Reading your report (4:15)</p>
+                    <h3>Reading Results</h3>
+                    <p>Risk labels summarize the highest malignancy probability found in the current scan.</p>
+                    <p>Each nodule card lists location, detection confidence, malignancy probability, and follow-up guidance.</p>
+                    <p>Use the CT visualization and the exported PDF together when preparing printouts or handoffs.</p>
                 </section>
+                <section class="settings-group">
+                    <h3>Exports and Sharing</h3>
+                    <p>Use Export PDF for a formatted report with dedicated imaging pages suitable for printing.</p>
+                    <p>Use Share to prepare a review link and message for another clinician or collaborator.</p>
+                    <p>Use Export Image when you only need the current visualization panel.</p>
+                </section>
+                <section class="settings-group">
+                    <h3>Troubleshooting</h3>
+                    <p>If a scan does not appear, confirm the file is `.nii`, `.nii.gz`, `.mhd`, `.npy`, or `.npz`.</p>
+                    <p>If the PDF layout looks outdated, refresh the browser before generating a new report.</p>
+                    <p>If results look unexpected, compare the current scan against prior exports from the History page.</p>
+                </section>
+            </div>
+            <div class="modal__footer">
+                <button class="button button--primary" data-close-modal type="button">Close</button>
             </div>
         </div>
 

@@ -1017,7 +1017,7 @@ ${nodulesHtml}
 ${visualization}
 </div>
 <p class="visual-caption">The axial, coronal, and sagittal CT views are preserved together on a single report page for review and sharing.</p>
-<p style="margin-top:18px">This report is AI-assisted clinical decision support and does not replace professional medical judgment. All findings should be reviewed by a qualified physician or radiologist.</p>
+<p style="margin-top:18px">This report is intended to support clinical review and does not replace professional medical judgment. All findings should be reviewed by a qualified physician or radiologist.</p>
 <div class="footer"><span>OncoVision-X • Professional Report</span><span>Page 3 of 3</span></div>
 </section>
 </body>
@@ -1034,24 +1034,27 @@ async function createPdfDocument(scan, reportData, JsPdfCtor, filename) {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const contentWidth = pageWidth - margin * 2;
-    const [logoSrc, watermarkSrc, visualizationSrc, visualizationSize] = await Promise.all([
+    const [logoSrc, watermarkSrc, visualizationSrc, visualizationSize, logoSize] = await Promise.all([
         imageToDataUrl("/assets/logo.png"),
         imageToDataUrl("/assets/favicon.png"),
         reportData.visualizationSrc ? imageToDataUrl(reportData.visualizationSrc) : Promise.resolve(""),
         reportData.visualizationSrc ? getImageSize(reportData.visualizationSrc) : Promise.resolve(null),
+        getImageSize("/assets/logo.png"),
     ]);
+    const viewImages = visualizationSrc ? await splitThreeViewVisualization(visualizationSrc) : [];
+    const totalPages = 2 + Math.max(viewImages.length, 1);
 
     drawPdfPageHeader(doc, {
-        title: "Lung Cancer Screening Analysis Report",
+        title: "Lung Screening Imaging Report",
         subtitleLines: [
             `Scan ID: ${scan.id}`,
             `Scan Date: ${reportData.scanDate}`,
             `Report Generated: ${reportData.generatedAt}`,
+            "Prepared for clinical review and print distribution",
         ],
         logoSrc,
+        logoSize,
         watermarkSrc,
-        pageNumber: 1,
-        totalPages: 3,
     });
     drawRiskBanner(doc, margin, 72, contentWidth, reportData);
     let y = drawWrappedTextBlock(doc, reportData.nextSteps, margin, 98, contentWidth, {
@@ -1067,16 +1070,15 @@ async function createPdfDocument(scan, reportData, JsPdfCtor, filename) {
         ["Size", reportData.fileSize],
         ["Total Time", `${reportData.totalTime}s`],
     ]);
-    drawPdfFooter(doc, 1, 3);
+    drawPdfFooter(doc, 1, totalPages);
 
     doc.addPage();
     drawPdfPageHeader(doc, {
         title: "Detailed Findings",
         subtitleLines: [],
         logoSrc,
+        logoSize,
         watermarkSrc,
-        pageNumber: 2,
-        totalPages: 3,
     });
     y = 40;
     if (reportData.nodules.length) {
@@ -1096,61 +1098,75 @@ async function createPdfDocument(scan, reportData, JsPdfCtor, filename) {
         }) + 8;
     }
     drawNotesBlock(doc, margin, Math.min(y, 215), contentWidth, reportData.physicianNotes);
-    drawPdfFooter(doc, 2, 3);
+    drawPdfFooter(doc, 2, totalPages);
 
-    doc.addPage();
-    drawPdfPageHeader(doc, {
-        title: "Three-View Scan Review",
-        subtitleLines: ["Axial, coronal, and sagittal views preserved together on a single report page."],
-        logoSrc,
-        watermarkSrc,
-        pageNumber: 3,
-        totalPages: 3,
+    const labeledViews = viewImages.length
+        ? viewImages.map((view, index) => ({
+            ...view,
+            label: ["Axial View", "Coronal View", "Sagittal View"][index] || `View ${index + 1}`,
+        }))
+        : [{ src: visualizationSrc, label: "Scan View", width: 0, height: 0 }];
+
+    labeledViews.forEach((viewImage, index) => {
+        doc.addPage();
+        drawPdfPageHeader(doc, {
+            title: viewImage.label,
+            subtitleLines: [
+                "High-resolution imaging panel for clinical review",
+                `Scan ID: ${scan.id}`,
+            ],
+            logoSrc,
+            logoSize,
+            watermarkSrc,
+        });
+        drawSingleViewPage(doc, {
+            x: margin,
+            y: 58,
+            width: contentWidth,
+            height: 172,
+            viewImage,
+        });
+        drawWrappedTextBlock(
+            doc,
+            "For interpretation and print review by qualified clinical staff.",
+            margin,
+            240,
+            contentWidth,
+            {
+                fontSize: 9,
+                textColor: "#64748b",
+                lineHeight: 4.6,
+            },
+        );
+        drawPdfFooter(doc, 3 + index, totalPages);
     });
-    drawVisualizationPage(doc, {
-        x: margin,
-        y: 52,
-        width: contentWidth,
-        height: 184,
-        visualizationSrc,
-        visualizationSize,
-    });
-    drawWrappedTextBlock(
-        doc,
-        "This report is AI-assisted clinical decision support and does not replace professional medical judgment. All findings should be reviewed by a qualified physician or radiologist.",
-        margin,
-        246,
-        contentWidth,
-        {
-            fontSize: 9,
-            textColor: "#64748b",
-            lineHeight: 4.6,
-        },
-    );
-    drawPdfFooter(doc, 3, 3);
     doc.save(filename);
     toastLikeAlert("Report downloaded successfully.");
 }
 
-function drawPdfPageHeader(doc, { title, subtitleLines, logoSrc, watermarkSrc, pageNumber, totalPages }) {
+function drawPdfPageHeader(doc, { title, subtitleLines, logoSrc, logoSize, watermarkSrc }) {
     if (watermarkSrc) {
         drawPdfWatermark(doc, watermarkSrc);
     }
     if (logoSrc) {
-        doc.addImage(logoSrc, "PNG", 16, 12, 54, 14);
+        const fittedLogo = fitImageInBox(
+            logoSize?.width || 540,
+            logoSize?.height || 140,
+            68,
+            22,
+        );
+        doc.addImage(logoSrc, "PNG", 16, 12, fittedLogo.width, fittedLogo.height);
     }
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(20);
+    doc.setFontSize(19);
     doc.setTextColor("#0f172a");
-    doc.text(title, 16, 34);
+    doc.text(title, 16, 39);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(10.5);
+    doc.setFontSize(10);
     doc.setTextColor("#475569");
     subtitleLines.forEach((line, index) => {
-        doc.text(line, 16, 41 + index * 5);
+        doc.text(line, 16, 47 + index * 4.8);
     });
-    doc.setFontSize(9);
-    doc.text(pageNumberLabel(pageNumber, totalPages), 194, 15, { align: "right" });
 }
 
 function drawPdfWatermark(doc, watermarkSrc) {
@@ -1238,23 +1254,28 @@ function drawNotesBlock(doc, x, y, width, notes) {
     });
 }
 
-function drawVisualizationPage(doc, { x, y, width, height, visualizationSrc, visualizationSize }) {
+function drawSingleViewPage(doc, { x, y, width, height, viewImage }) {
     doc.setDrawColor("#d7e0ea");
     doc.setFillColor(248, 250, 252);
     doc.roundedRect(x, y, width, height, 6, 6, "FD");
-    if (!visualizationSrc || !visualizationSize) {
+    if (!viewImage?.src) {
         doc.setFont("helvetica", "normal");
         doc.setFontSize(11);
         doc.setTextColor("#64748b");
         doc.text("Visualization not available for this scan.", x + width / 2, y + height / 2, { align: "center" });
         return;
     }
-    const fitted = fitImageInBox(visualizationSize.width, visualizationSize.height, width - 10, height - 10);
+    const fitted = fitImageInBox(
+        viewImage.width || 1,
+        viewImage.height || 1,
+        width - 12,
+        height - 12,
+    );
     doc.addImage(
-        visualizationSrc,
+        viewImage.src,
         "PNG",
-        x + 5 + (width - 10 - fitted.width) / 2,
-        y + 5 + (height - 10 - fitted.height) / 2,
+        x + 6 + (width - 12 - fitted.width) / 2,
+        y + 6 + (height - 12 - fitted.height) / 2,
         fitted.width,
         fitted.height,
     );
@@ -1324,6 +1345,46 @@ function getImageSize(src) {
     return new Promise((resolve, reject) => {
         const image = new Image();
         image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+        image.onerror = reject;
+        image.src = src;
+    });
+}
+
+function splitThreeViewVisualization(src) {
+    return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => {
+            const segmentWidth = Math.floor(image.naturalWidth / 3);
+            const views = [];
+            for (let index = 0; index < 3; index += 1) {
+                const canvas = document.createElement("canvas");
+                const cropWidth = index === 2 ? image.naturalWidth - segmentWidth * 2 : segmentWidth;
+                canvas.width = cropWidth;
+                canvas.height = image.naturalHeight;
+                const context = canvas.getContext("2d");
+                if (!context) {
+                    reject(new Error("Canvas context unavailable for visualization split"));
+                    return;
+                }
+                context.drawImage(
+                    image,
+                    index * segmentWidth,
+                    0,
+                    cropWidth,
+                    image.naturalHeight,
+                    0,
+                    0,
+                    cropWidth,
+                    image.naturalHeight,
+                );
+                views.push({
+                    src: canvas.toDataURL("image/png"),
+                    width: cropWidth,
+                    height: image.naturalHeight,
+                });
+            }
+            resolve(views);
+        };
         image.onerror = reject;
         image.src = src;
     });
