@@ -88,6 +88,9 @@ const physicianNotesInput = document.getElementById("physicianNotesInput");
 const confirmShareButton = document.getElementById("confirmShareButton");
 const shareEmailInput = document.getElementById("shareEmailInput");
 const shareMessageInput = document.getElementById("shareMessageInput");
+const themeRadios = Array.from(document.querySelectorAll("input[name='theme']"));
+const THEME_KEY = "oncovision.theme";
+const prefersDarkScheme = window.matchMedia("(prefers-color-scheme: dark)");
 
 const analysisMessages = [
     "Processing 324 slices",
@@ -100,6 +103,7 @@ wireUpload();
 wireActions();
 wireModals();
 wireTechnicalTabs();
+wireThemeSelector();
 renderRecentUploads();
 renderHistoryPage();
 updateNavState();
@@ -257,6 +261,45 @@ function wireModals() {
     document.querySelectorAll("[data-close-modal]").forEach((button) => {
         button.addEventListener("click", () => openModal(null));
     });
+}
+
+function wireThemeSelector() {
+    const stored = localStorage.getItem(THEME_KEY) || "auto";
+    themeRadios.forEach((input) => {
+        input.checked = input.value === stored;
+        input.addEventListener("change", () => {
+            localStorage.setItem(THEME_KEY, input.value);
+            applyTheme(input.value);
+        });
+    });
+
+    applyTheme(stored);
+    const handleSystemThemeChange = () => {
+        if (localStorage.getItem(THEME_KEY) === "auto") {
+            applyTheme("auto");
+        }
+    };
+
+    if (typeof prefersDarkScheme.addEventListener === "function") {
+        prefersDarkScheme.addEventListener("change", handleSystemThemeChange);
+    } else if (typeof prefersDarkScheme.addListener === "function") {
+        prefersDarkScheme.addListener(handleSystemThemeChange);
+    }
+}
+
+function applyTheme(preference) {
+    const resolved =
+        preference === "dark"
+            ? "dark"
+            : preference === "light"
+                ? "light"
+                : prefersDarkScheme.matches
+                    ? "dark"
+                    : "light";
+
+    document.body.classList.toggle("theme-dark", resolved === "dark");
+    document.body.classList.toggle("theme-light", resolved === "light");
+    document.documentElement.dataset.theme = preference;
 }
 
 function wireTechnicalTabs() {
@@ -660,7 +703,7 @@ function renderHistoryPage() {
 
     if (!items.length) {
         historyGroups.innerHTML = `
-            <article class="card" style="max-width: var(--content-width);">
+            <article class="card">
                 <h3>No scans yet</h3>
                 <p class="summary-text">Analyze a CT scan to start building your history.</p>
             </article>
