@@ -387,8 +387,10 @@ function syncSelectedFiles() {
 
     const summary = createFileSummary(state.selectedFiles);
     selectedFilePanel.hidden = false;
-    selectedFileName.textContent = summary.name;
+    selectedFileName.textContent = formatDisplayFileName(summary.name);
+    selectedFileName.title = summary.name;
     selectedFileMeta.textContent = `${summary.size} • ${summary.format}`;
+    selectedFileMeta.title = `${summary.name} • ${summary.size} • ${summary.format}`;
     fileFormatValue.textContent = summary.format;
     fileCountValue.textContent = String(summary.fileCount);
     fileSizeValue.textContent = summary.size;
@@ -397,14 +399,42 @@ function syncSelectedFiles() {
 function createFileSummary(files) {
     const name = files.length === 1 ? files[0].name : `${files.length} files selected`;
     const sizeBytes = files.reduce((sum, file) => sum + file.size, 0);
-    const extension = files[0]?.name.split(".").slice(1).join(".") || "volume";
+    const extension = formatFileTypeLabel(files[0]?.name || "");
     return {
         name,
         size: formatBytes(sizeBytes),
         sizeBytes,
-        format: extension.toUpperCase(),
+        format: extension,
         fileCount: files.length,
     };
+}
+
+function formatFileTypeLabel(fileName) {
+    const lowerName = String(fileName || "").toLowerCase();
+    if (!lowerName) {
+        return "VOLUME";
+    }
+    if (lowerName.endsWith(".nii.gz")) {
+        return "NII.GZ";
+    }
+    const segments = lowerName.split(".").filter(Boolean);
+    if (segments.length <= 1) {
+        return "VOLUME";
+    }
+    return segments[segments.length - 1].toUpperCase();
+}
+
+function formatDisplayFileName(fileName, maxLength = 56) {
+    const value = String(fileName || "").trim();
+    if (!value) {
+        return "Unnamed file";
+    }
+    if (value.length <= maxLength) {
+        return value;
+    }
+    const head = Math.ceil((maxLength - 1) * 0.6);
+    const tail = Math.floor((maxLength - 1) * 0.4);
+    return `${value.slice(0, head)}…${value.slice(-tail)}`;
 }
 
 function showUploadError(message) {
@@ -522,9 +552,11 @@ function renderResultsPage(scan) {
     resultsMeta.textContent = `${analysis.num_nodules_detected || 0} nodules detected • Analyzed ${formatDate(scan.analyzedAt)}`;
     resultsBreadcrumb.textContent = `Home > History > Scan ${scan.id}`;
     recommendationText.textContent = payload.next_steps || "Consult physician for evaluation.";
-    scanFileName.textContent = scan.fileSummary?.name || "-";
+    scanFileName.textContent = formatDisplayFileName(scan.fileSummary?.name || "-");
+    scanFileName.title = scan.fileSummary?.name || "-";
     scanFileSize.textContent = scan.fileSummary?.size || "-";
     scanFileFormat.textContent = scan.fileSummary?.format || "-";
+    scanFileFormat.title = scan.fileSummary?.format || "-";
 
     renderTiming(payload.timing || {});
     renderVisualization(payload.visualization);
@@ -867,75 +899,28 @@ function generatePdfReport(previewOnly) {
 
     const scan = state.currentScan;
     const analysis = scan.result.analysis || {};
-    const patientName = patientNameInput.value.trim() || "Not provided";
-    const mrn = patientMrnInput.value.trim() || "Not provided";
-    const dob = patientDobInput.value.trim() || "Not provided";
-    const physicianNotes = physicianNotesInput.value.trim() || "No additional physician notes.";
-    const nodules = analysis.nodules || [];
-    const visualization = scanImage.src
-        ? `<img src="${scanImage.src}" alt="CT visualization" style="width:100%;border:1px solid #e5e7eb;border-radius:12px;">`
-        : "<div style='padding:32px;border:1px solid #e5e7eb;border-radius:12px;background:#f8fafc;'>Visualization not available for this scan.</div>";
-    const reportHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>OVX Report ${scan.id}</title>
-<style>
-body{font-family:Inter,Arial,sans-serif;margin:0;color:#1f2937;background:#fff}
-.page{padding:28mm 20mm;min-height:297mm;page-break-after:always;position:relative}
-.page:last-child{page-break-after:auto}
-h1,h2,h3{color:#0a1628;margin:0 0 12px}
-h1{font-size:32px} h2{font-size:24px} p,li{font-size:13px;line-height:1.6}
-.brand{width:220px;margin-bottom:36px}
-.risk{padding:16px;border-radius:10px;background:${riskBanner.classList.contains("risk-banner--high") ? "#fee2e2" : riskBanner.classList.contains("risk-banner--medium") ? "#fef3c7" : "#d1fae5"};margin:18px 0}
-.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
-.box{border:1px solid #e5e7eb;border-radius:10px;padding:14px;background:#fff}
-.footer{position:absolute;left:20mm;right:20mm;bottom:12mm;padding-top:6mm;border-top:1px solid #e5e7eb;font-size:10px;color:#6b7280;display:flex;justify-content:space-between}
-.watermark{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
-.watermark img{width:320px;opacity:.055;filter:grayscale(1)}
-</style>
-</head>
-<body>
-<section class="page">
-<div class="watermark"><img src="${window.location.origin}/assets/favicon.png" alt=""></div>
-<img class="brand" src="${window.location.origin}/assets/logo.png" alt="OncoVision-X">
-<h1>Lung Cancer Screening Analysis Report</h1>
-<p>Scan ID: ${scan.id}</p>
-<p>Scan Date: ${formatDate(scan.analyzedAt || scan.createdAt, true)}</p>
-<p>Report Generated: ${formatDate(new Date().toISOString(), true)}</p>
-<div class="footer"><span>OncoVision-X • Confidential Report</span><span>Page 1 of 4</span></div>
-</section>
-<section class="page">
-<div class="watermark"><img src="${window.location.origin}/assets/favicon.png" alt=""></div>
-<h2>Executive Summary</h2>
-<div class="risk"><strong>Overall Risk: ${analysis.overall_risk || "LOW"}</strong><br>Maximum malignancy probability: ${Number(analysis.risk_score || 0).toFixed(1)}%</div>
-<p>${scan.result.next_steps || "Consult physician for evaluation."}</p>
-<div class="grid">
-<div class="box"><strong>Patient</strong><p>${patientName}</p></div>
-<div class="box"><strong>MRN</strong><p>${mrn}</p></div>
-<div class="box"><strong>DOB</strong><p>${dob}</p></div>
-<div class="box"><strong>File</strong><p>${scan.fileSummary?.name || "-"}</p></div>
-<div class="box"><strong>Size</strong><p>${scan.fileSummary?.size || "-"}</p></div>
-<div class="box"><strong>Total Time</strong><p>${Number(scan.result.timing?.total_sec || 0).toFixed(1)}s</p></div>
-</div>
-<div class="footer"><span>OncoVision-X • Professional Report</span><span>Page 2 of 4</span></div>
-</section>
-<section class="page">
-<div class="watermark"><img src="${window.location.origin}/assets/favicon.png" alt=""></div>
-<h2>Detailed Findings</h2>
-${nodules.length ? nodules.map((nodule) => `<div class="box" style="margin-bottom:12px"><h3>Nodule #${nodule.nodule_id}</h3><p>Risk: ${nodule.risk_level}</p><p>Detection Confidence: ${nodule.detection_confidence}%</p><p>Malignancy Probability: ${nodule.malignancy_probability}%</p><p>Location: ${nodule.location}</p><p>Recommendation: ${nodule.recommendation}</p></div>`).join("") : "<p>No suspicious nodules were detected.</p>"}
-<div class="box"><h3>Physician Notes</h3><p>${physicianNotes}</p></div>
-<div class="footer"><span>OncoVision-X • Professional Report</span><span>Page 3 of 4</span></div>
-</section>
-<section class="page">
-<div class="watermark"><img src="${window.location.origin}/assets/favicon.png" alt=""></div>
-<h2>Visualization & Disclaimer</h2>
-${visualization}
-<p style="margin-top:18px">This report is AI-assisted clinical decision support and does not replace professional medical judgment. All findings should be reviewed by a qualified physician or radiologist.</p>
-<div class="footer"><span>OncoVision-X • Professional Report</span><span>Page 4 of 4</span></div>
-</section>
-</body>
-</html>`;
+    const reportData = {
+        patientName: patientNameInput.value.trim() || "Not provided",
+        mrn: patientMrnInput.value.trim() || "Not provided",
+        dob: patientDobInput.value.trim() || "Not provided",
+        physicianNotes: physicianNotesInput.value.trim() || "No additional physician notes.",
+        nodules: analysis.nodules || [],
+        overallRisk: String(analysis.overall_risk || "LOW").toUpperCase(),
+        riskScore: Number(analysis.risk_score || 0).toFixed(1),
+        totalTime: Number(scan.result.timing?.total_sec || 0).toFixed(1),
+        scanDate: formatDate(scan.analyzedAt || scan.createdAt, true),
+        generatedAt: formatDate(new Date().toISOString(), true),
+        fileName: scan.fileSummary?.name || "-",
+        fileSize: scan.fileSummary?.size || "-",
+        nextSteps: scan.result.next_steps || "Consult physician for evaluation.",
+        visualizationSrc: scanImage.src || "",
+        riskColor: riskBanner.classList.contains("risk-banner--high")
+            ? "#fee2e2"
+            : riskBanner.classList.contains("risk-banner--medium")
+                ? "#fef3c7"
+                : "#d1fae5",
+    };
+    const reportHtml = buildPdfPreviewHtml(scan, reportData);
 
     if (previewOnly) {
         const reportWindow = window.open("", "_blank", "noopener,noreferrer,width=1100,height=900");
@@ -951,56 +936,417 @@ ${visualization}
         return;
     }
 
-    const html2pdfInstance = window.html2pdf;
-    if (!html2pdfInstance) {
+    const jsPdfCtor = window.jspdf?.jsPDF || window.jsPDF;
+    if (!jsPdfCtor) {
         toastLikeAlert("PDF library failed to load. Falling back to preview window.");
         generatePdfReport(true);
         return;
     }
 
-    const styleMatch = reportHtml.match(/<style>([\s\S]*?)<\/style>/i);
-    const bodyMatch = reportHtml.match(/<body>([\s\S]*?)<\/body>/i);
-    const reportRoot = document.createElement("div");
-    reportRoot.style.position = "fixed";
-    reportRoot.style.left = "-99999px";
-    reportRoot.style.top = "0";
-    reportRoot.style.width = "210mm";
-    reportRoot.style.background = "#ffffff";
-    reportRoot.innerHTML = `${styleMatch ? `<style>${styleMatch[1]}</style>` : ""}${bodyMatch ? bodyMatch[1] : ""}`;
-    document.body.appendChild(reportRoot);
-
     const filename = `OVX_Report_${scan.id}_${formatReportDate(new Date().toISOString())}.pdf`;
     openModal(null);
 
-    html2pdfInstance()
-        .set({
-            margin: 0,
-            filename,
-            image: { type: "jpeg", quality: 0.98 },
-            html2canvas: {
-                scale: 2,
-                useCORS: true,
-                backgroundColor: "#ffffff",
-            },
-            jsPDF: {
-                unit: "mm",
-                format: "a4",
-                orientation: "portrait",
-            },
-            pagebreak: { mode: ["css", "legacy"] },
-        })
-        .from(reportRoot)
-        .save()
-        .then(() => {
-            document.body.removeChild(reportRoot);
-            toastLikeAlert("Report downloaded successfully.");
-        })
-        .catch(() => {
-            if (document.body.contains(reportRoot)) {
-                document.body.removeChild(reportRoot);
+    createPdfDocument(scan, reportData, jsPdfCtor, filename).catch((error) => {
+        console.error("PDF generation failed", error);
+        toastLikeAlert("PDF generation failed. Opening preview instead.");
+        generatePdfReport(true);
+    });
+}
+
+function buildPdfPreviewHtml(scan, reportData) {
+    const visualization = reportData.visualizationSrc
+        ? `<img src="${reportData.visualizationSrc}" alt="CT visualization" style="width:100%;height:auto;border:1px solid #d6dee8;border-radius:18px;">`
+        : "<div style='padding:32px;border:1px solid #d6dee8;border-radius:18px;background:#f8fafc;'>Visualization not available for this scan.</div>";
+    const nodulesHtml = reportData.nodules.length
+        ? reportData.nodules.map((nodule) => `<div class="box" style="margin-bottom:12px"><h3>Nodule #${nodule.nodule_id}</h3><p>Risk: ${escapeHtml(nodule.risk_level || "LOW")}</p><p>Detection Confidence: ${Number(nodule.detection_confidence || 0).toFixed(1)}%</p><p>Malignancy Probability: ${Number(nodule.malignancy_probability || 0).toFixed(1)}%</p><p>Location: ${escapeHtml(nodule.location || "-")}</p><p>Recommendation: ${escapeHtml(nodule.recommendation || "Consult physician.")}</p></div>`).join("")
+        : "<p>No suspicious nodules were detected.</p>";
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OVX Report ${scan.id}</title>
+<style>
+body{font-family:Inter,Arial,sans-serif;margin:0;color:#1f2937;background:#eef2f7}
+.page{box-sizing:border-box;padding:22mm 18mm;min-height:297mm;page-break-after:always;position:relative;background:#fff}
+.page:last-child{page-break-after:auto}
+h1,h2,h3{color:#0a1628;margin:0 0 12px}
+h1{font-size:30px} h2{font-size:24px} p,li{font-size:13px;line-height:1.6}
+.brand{width:220px;margin-bottom:28px}
+.risk{padding:16px;border-radius:10px;background:${reportData.riskColor};margin:18px 0}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.box{border:1px solid #e5e7eb;border-radius:10px;padding:14px;background:#fff}
+.footer{position:absolute;left:20mm;right:20mm;bottom:12mm;padding-top:6mm;border-top:1px solid #e5e7eb;font-size:10px;color:#6b7280;display:flex;justify-content:space-between}
+.watermark{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.watermark img{width:320px;opacity:.055;filter:grayscale(1)}
+.visual-shell{margin-top:14px;padding:14px;border:1px solid #d6dee8;border-radius:20px;background:linear-gradient(180deg,#f8fafc 0%,#eef4fb 100%)}
+.visual-caption{margin-top:12px;font-size:12px;color:#475569}
+</style>
+</head>
+<body>
+<section class="page">
+<div class="watermark"><img src="${window.location.origin}/assets/favicon.png" alt=""></div>
+<img class="brand" src="${window.location.origin}/assets/logo.png" alt="OncoVision-X">
+<h1>Lung Cancer Screening Analysis Report</h1>
+<p>Scan ID: ${scan.id}</p>
+<p>Scan Date: ${reportData.scanDate}</p>
+<p>Report Generated: ${reportData.generatedAt}</p>
+<div class="risk"><strong>Overall Risk: ${reportData.overallRisk}</strong><br>Maximum malignancy probability: ${reportData.riskScore}%</div>
+<p>${escapeHtml(reportData.nextSteps)}</p>
+<div class="grid">
+<div class="box"><strong>Patient</strong><p>${escapeHtml(reportData.patientName)}</p></div>
+<div class="box"><strong>MRN</strong><p>${escapeHtml(reportData.mrn)}</p></div>
+<div class="box"><strong>DOB</strong><p>${escapeHtml(reportData.dob)}</p></div>
+<div class="box"><strong>File</strong><p>${escapeHtml(reportData.fileName)}</p></div>
+<div class="box"><strong>Size</strong><p>${escapeHtml(reportData.fileSize)}</p></div>
+<div class="box"><strong>Total Time</strong><p>${reportData.totalTime}s</p></div>
+</div>
+<div class="footer"><span>OncoVision-X • Confidential Report</span><span>Page 1 of 3</span></div>
+</section>
+<section class="page">
+<div class="watermark"><img src="${window.location.origin}/assets/favicon.png" alt=""></div>
+<h2>Detailed Findings</h2>
+${nodulesHtml}
+<div class="box"><h3>Physician Notes</h3><p>${escapeHtml(reportData.physicianNotes)}</p></div>
+<div class="footer"><span>OncoVision-X • Professional Report</span><span>Page 2 of 3</span></div>
+</section>
+<section class="page">
+<div class="watermark"><img src="${window.location.origin}/assets/favicon.png" alt=""></div>
+<h2>Three-View Scan Review</h2>
+<div class="visual-shell">
+${visualization}
+</div>
+<p class="visual-caption">The axial, coronal, and sagittal CT views are preserved together on a single report page for review and sharing.</p>
+<p style="margin-top:18px">This report is AI-assisted clinical decision support and does not replace professional medical judgment. All findings should be reviewed by a qualified physician or radiologist.</p>
+<div class="footer"><span>OncoVision-X • Professional Report</span><span>Page 3 of 3</span></div>
+</section>
+</body>
+</html>`;
+}
+
+async function createPdfDocument(scan, reportData, JsPdfCtor, filename) {
+    const doc = new JsPdfCtor({
+        unit: "mm",
+        format: "a4",
+        orientation: "portrait",
+    });
+    const margin = 16;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const contentWidth = pageWidth - margin * 2;
+    const [logoSrc, watermarkSrc, visualizationSrc, visualizationSize] = await Promise.all([
+        imageToDataUrl("/assets/logo.png"),
+        imageToDataUrl("/assets/favicon.png"),
+        reportData.visualizationSrc ? imageToDataUrl(reportData.visualizationSrc) : Promise.resolve(""),
+        reportData.visualizationSrc ? getImageSize(reportData.visualizationSrc) : Promise.resolve(null),
+    ]);
+
+    drawPdfPageHeader(doc, {
+        title: "Lung Cancer Screening Analysis Report",
+        subtitleLines: [
+            `Scan ID: ${scan.id}`,
+            `Scan Date: ${reportData.scanDate}`,
+            `Report Generated: ${reportData.generatedAt}`,
+        ],
+        logoSrc,
+        watermarkSrc,
+        pageNumber: 1,
+        totalPages: 3,
+    });
+    drawRiskBanner(doc, margin, 72, contentWidth, reportData);
+    let y = drawWrappedTextBlock(doc, reportData.nextSteps, margin, 98, contentWidth, {
+        fontSize: 11,
+        textColor: "#334155",
+        lineHeight: 5.8,
+    }) + 8;
+    drawInfoGrid(doc, margin, y, contentWidth, [
+        ["Patient", reportData.patientName],
+        ["MRN", reportData.mrn],
+        ["DOB", reportData.dob],
+        ["File", reportData.fileName],
+        ["Size", reportData.fileSize],
+        ["Total Time", `${reportData.totalTime}s`],
+    ]);
+    drawPdfFooter(doc, 1, 3);
+
+    doc.addPage();
+    drawPdfPageHeader(doc, {
+        title: "Detailed Findings",
+        subtitleLines: [],
+        logoSrc,
+        watermarkSrc,
+        pageNumber: 2,
+        totalPages: 3,
+    });
+    y = 40;
+    if (reportData.nodules.length) {
+        reportData.nodules.forEach((nodule, index) => {
+            const blockHeight = 38;
+            if (y + blockHeight > pageHeight - 62) {
+                return;
             }
-            toastLikeAlert("PDF generation failed. Try Preview instead.");
+            drawNoduleBlock(doc, margin, y, contentWidth, index + 1, nodule);
+            y += blockHeight + 4;
         });
+    } else {
+        y = drawWrappedTextBlock(doc, "No suspicious nodules were detected.", margin, y, contentWidth, {
+            fontSize: 11,
+            textColor: "#475569",
+            lineHeight: 5.8,
+        }) + 8;
+    }
+    drawNotesBlock(doc, margin, Math.min(y, 215), contentWidth, reportData.physicianNotes);
+    drawPdfFooter(doc, 2, 3);
+
+    doc.addPage();
+    drawPdfPageHeader(doc, {
+        title: "Three-View Scan Review",
+        subtitleLines: ["Axial, coronal, and sagittal views preserved together on a single report page."],
+        logoSrc,
+        watermarkSrc,
+        pageNumber: 3,
+        totalPages: 3,
+    });
+    drawVisualizationPage(doc, {
+        x: margin,
+        y: 52,
+        width: contentWidth,
+        height: 184,
+        visualizationSrc,
+        visualizationSize,
+    });
+    drawWrappedTextBlock(
+        doc,
+        "This report is AI-assisted clinical decision support and does not replace professional medical judgment. All findings should be reviewed by a qualified physician or radiologist.",
+        margin,
+        246,
+        contentWidth,
+        {
+            fontSize: 9,
+            textColor: "#64748b",
+            lineHeight: 4.6,
+        },
+    );
+    drawPdfFooter(doc, 3, 3);
+    doc.save(filename);
+    toastLikeAlert("Report downloaded successfully.");
+}
+
+function drawPdfPageHeader(doc, { title, subtitleLines, logoSrc, watermarkSrc, pageNumber, totalPages }) {
+    if (watermarkSrc) {
+        drawPdfWatermark(doc, watermarkSrc);
+    }
+    if (logoSrc) {
+        doc.addImage(logoSrc, "PNG", 16, 12, 54, 14);
+    }
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(20);
+    doc.setTextColor("#0f172a");
+    doc.text(title, 16, 34);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10.5);
+    doc.setTextColor("#475569");
+    subtitleLines.forEach((line, index) => {
+        doc.text(line, 16, 41 + index * 5);
+    });
+    doc.setFontSize(9);
+    doc.text(pageNumberLabel(pageNumber, totalPages), 194, 15, { align: "right" });
+}
+
+function drawPdfWatermark(doc, watermarkSrc) {
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    if (typeof doc.GState === "function" && typeof doc.setGState === "function") {
+        doc.setGState(new doc.GState({ opacity: 0.06 }));
+        doc.addImage(watermarkSrc, "PNG", pageWidth / 2 - 52, pageHeight / 2 - 52, 104, 104);
+        doc.setGState(new doc.GState({ opacity: 1 }));
+        return;
+    }
+    doc.addImage(watermarkSrc, "PNG", pageWidth / 2 - 44, pageHeight / 2 - 44, 88, 88);
+}
+
+function drawRiskBanner(doc, x, y, width, reportData) {
+    const rgb = hexToRgb(reportData.riskColor);
+    doc.setFillColor(rgb.r, rgb.g, rgb.b);
+    doc.roundedRect(x, y, width, 18, 4, 4, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor("#0f172a");
+    doc.text(`Overall Risk: ${reportData.overallRisk}`, x + 4, y + 7);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10.5);
+    doc.text(`Maximum malignancy probability: ${reportData.riskScore}%`, x + 4, y + 13);
+}
+
+function drawInfoGrid(doc, x, y, width, items) {
+    const columns = 2;
+    const gap = 4;
+    const boxWidth = (width - gap) / columns;
+    const boxHeight = 18;
+    items.forEach(([label, value], index) => {
+        const col = index % columns;
+        const row = Math.floor(index / columns);
+        const boxX = x + col * (boxWidth + gap);
+        const boxY = y + row * (boxHeight + gap);
+        doc.setDrawColor("#d7e0ea");
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(boxX, boxY, boxWidth, boxHeight, 3, 3, "FD");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9.5);
+        doc.setTextColor("#0f172a");
+        doc.text(label, boxX + 3, boxY + 6);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor("#475569");
+        const lines = doc.splitTextToSize(String(value), boxWidth - 6);
+        doc.text(lines[0] || "-", boxX + 3, boxY + 12);
+    });
+}
+
+function drawNoduleBlock(doc, x, y, width, ordinal, nodule) {
+    doc.setDrawColor("#d7e0ea");
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(x, y, width, 38, 3, 3, "FD");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor("#0f172a");
+    doc.text(`Nodule #${nodule.nodule_id || ordinal}`, x + 4, y + 7);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    doc.setTextColor("#334155");
+    doc.text(`Risk: ${String(nodule.risk_level || "LOW").toUpperCase()}`, x + 4, y + 14);
+    doc.text(`Detection Confidence: ${Number(nodule.detection_confidence || 0).toFixed(1)}%`, x + 4, y + 20);
+    doc.text(`Malignancy Probability: ${Number(nodule.malignancy_probability || 0).toFixed(1)}%`, x + 4, y + 26);
+    const location = doc.splitTextToSize(`Location: ${String(nodule.location || "-")}`, width - 114);
+    const recommendation = doc.splitTextToSize(`Recommendation: ${String(nodule.recommendation || "Consult physician.")}`, width - 114);
+    doc.text(location, x + 110, y + 14);
+    doc.text(recommendation.slice(0, 3), x + 110, y + 21);
+}
+
+function drawNotesBlock(doc, x, y, width, notes) {
+    doc.setDrawColor("#d7e0ea");
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(x, y, width, 38, 3, 3, "FD");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor("#0f172a");
+    doc.text("Physician Notes", x + 4, y + 7);
+    drawWrappedTextBlock(doc, notes, x + 4, y + 14, width - 8, {
+        fontSize: 9.5,
+        textColor: "#475569",
+        lineHeight: 5,
+    });
+}
+
+function drawVisualizationPage(doc, { x, y, width, height, visualizationSrc, visualizationSize }) {
+    doc.setDrawColor("#d7e0ea");
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(x, y, width, height, 6, 6, "FD");
+    if (!visualizationSrc || !visualizationSize) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+        doc.setTextColor("#64748b");
+        doc.text("Visualization not available for this scan.", x + width / 2, y + height / 2, { align: "center" });
+        return;
+    }
+    const fitted = fitImageInBox(visualizationSize.width, visualizationSize.height, width - 10, height - 10);
+    doc.addImage(
+        visualizationSrc,
+        "PNG",
+        x + 5 + (width - 10 - fitted.width) / 2,
+        y + 5 + (height - 10 - fitted.height) / 2,
+        fitted.width,
+        fitted.height,
+    );
+}
+
+function drawPdfFooter(doc, pageNumber, totalPages) {
+    const pageHeight = doc.internal.pageSize.getHeight();
+    doc.setDrawColor("#d7e0ea");
+    doc.line(16, pageHeight - 14, 194, pageHeight - 14);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor("#64748b");
+    doc.text("OncoVision-X • Professional Report", 16, pageHeight - 8);
+    doc.text(pageNumberLabel(pageNumber, totalPages), 194, pageHeight - 8, { align: "right" });
+}
+
+function drawWrappedTextBlock(doc, text, x, y, width, options = {}) {
+    const {
+        fontSize = 10.5,
+        textColor = "#334155",
+        lineHeight = 5,
+    } = options;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(fontSize);
+    doc.setTextColor(textColor);
+    const lines = doc.splitTextToSize(String(text || ""), width);
+    doc.text(lines, x, y);
+    return y + lines.length * lineHeight;
+}
+
+function pageNumberLabel(pageNumber, totalPages) {
+    return `Page ${pageNumber} of ${totalPages}`;
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+function imageToDataUrl(src) {
+    if (!src) {
+        return Promise.resolve("");
+    }
+    if (src.startsWith("data:")) {
+        return Promise.resolve(src);
+    }
+    return fetch(src)
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error(`Failed to load image: ${src}`);
+            }
+            return response.blob();
+        })
+        .then((blob) => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(String(reader.result || ""));
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        }));
+}
+
+function getImageSize(src) {
+    return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+        image.onerror = reject;
+        image.src = src;
+    });
+}
+
+function fitImageInBox(sourceWidth, sourceHeight, maxWidth, maxHeight) {
+    if (!sourceWidth || !sourceHeight) {
+        return { width: maxWidth, height: maxHeight };
+    }
+    const scale = Math.min(maxWidth / sourceWidth, maxHeight / sourceHeight);
+    return {
+        width: sourceWidth * scale,
+        height: sourceHeight * scale,
+    };
+}
+
+function hexToRgb(hex) {
+    const value = hex.replace("#", "");
+    return {
+        r: parseInt(value.slice(0, 2), 16),
+        g: parseInt(value.slice(2, 4), 16),
+        b: parseInt(value.slice(4, 6), 16),
+    };
 }
 
 function openModal(type) {

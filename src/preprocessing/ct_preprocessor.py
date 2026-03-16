@@ -142,11 +142,20 @@ def create_lung_mask(ct_scan, threshold_lung=-320):
 
 
 def find_candidates_blob(ct_normalized, lung_mask, min_sigma=1.5, max_sigma=7,
-                         num_sigma=10, threshold=0.12, max_candidates=50):
+                         num_sigma=10, threshold=0.25, max_candidates=50):
     """Find candidate nodules using 3D Difference of Gaussians inside lungs."""
     from skimage.feature import blob_dog
 
     del num_sigma
+    print(
+        f"[DEBUG] find_candidates_blob(min_sigma={min_sigma}, "
+        f"max_sigma={max_sigma}, threshold={threshold}, max_candidates={max_candidates})"
+    )
+
+    # Guard against overly permissive thresholds that explode false positives.
+    if threshold < 0.08:
+        print(f"Warning: blob_dog threshold {threshold:.3f} is too low; forcing 0.12")
+        threshold = 0.12
 
     lung_indices = np.where(lung_mask)
     if len(lung_indices[0]) == 0:
@@ -291,20 +300,17 @@ def preprocess_for_detection(scan_path, use_blob_candidates=True):
     if use_blob_candidates:
         candidates_raw = find_candidates_blob(ct_01, lung_mask)
 
+    print(f"[DEBUG] preprocess_for_detection raw_candidates={len(candidates_raw)}")
     candidates = []
-    half_nodule = NODULE_PATCH_SIZE // 2
+    rejected_patch_errors = 0
     for candidate in candidates_raw:
         z, y, x = candidate['location']
 
-        if (
-            z < half_nodule or z >= ct_raw.shape[0] - half_nodule or
-            y < half_nodule or y >= ct_raw.shape[1] - half_nodule or
-            x < half_nodule or x >= ct_raw.shape[2] - half_nodule
-        ):
-            continue
-
         nodule_patch = extract_patch(ct_signed, (z, y, x), NODULE_PATCH_SIZE, pad_value=-1.0)
         context_patch_96 = extract_patch(ct_signed, (z, y, x), CONTEXT_PATCH_SIZE, pad_value=-1.0)
+        if nodule_patch is None or context_patch_96 is None:
+            rejected_patch_errors += 1
+            continue
         context_patch = downsample_patch(context_patch_96, CONTEXT_TARGET_SIZE)
 
         candidates.append({
@@ -314,6 +320,11 @@ def preprocess_for_detection(scan_path, use_blob_candidates=True):
             'radius': candidate['radius'],
             'intensity': candidate['intensity'],
         })
+
+    print(
+        f"[DEBUG] preprocess_for_detection patches_ready={len(candidates)} "
+        f"rejected_patch_errors={rejected_patch_errors}"
+    )
 
     metadata = {
         'origin': origin.tolist(),

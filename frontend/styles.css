@@ -649,10 +649,14 @@ a:focus-visible,
     display: block;
     color: var(--navy);
     font-size: 18px;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .selected-file__header p {
     margin: 6px 0 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .file-facts {
@@ -684,6 +688,10 @@ a:focus-visible,
 .timing-grid strong {
     color: var(--navy);
     font-size: 16px;
+    display: block;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .selected-file__actions {
@@ -903,6 +911,10 @@ a:focus-visible,
 
 .scan-detail-grid strong {
     color: var(--navy);
+    display: block;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .risk-banner {

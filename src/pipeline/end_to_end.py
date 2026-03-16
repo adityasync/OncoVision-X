@@ -49,11 +49,12 @@ def format_location(location):
     return f"({location[0]}, {location[1]}, {location[2]})"
 
 
-def remove_duplicates_nms(detections, min_distance=15):
+def remove_duplicates_nms(detections, min_distance=30):
     """Remove duplicate detections based on center distance."""
     if len(detections) == 0:
         return []
 
+    print(f"[DEBUG] remove_duplicates_nms(min_distance={min_distance})")
     print(f"Applying NMS: {len(detections)} detections → ", end="")
     sorted_dets = sorted(
         detections,
@@ -129,7 +130,7 @@ class LungCancerDetectionSystem:
         self.classifier = model
         print("  Classifier loaded (MedicalNet r3d_18)")
 
-    def detect_nodules(self, candidates, threshold=0.5, nms_threshold_mm=15.0,
+    def detect_nodules(self, candidates, threshold=0.5, nms_threshold_mm=30.0,
                        spacing=(1.0, 1.0, 1.0)):
         """Run DCA-Net on extracted candidates and deduplicate with NMS."""
         del spacing
@@ -137,6 +138,10 @@ class LungCancerDetectionSystem:
         if self.detector is None:
             raise RuntimeError("Detection model not loaded")
 
+        print(
+            f"[DEBUG] detect_nodules(threshold={threshold}, "
+            f"nms_threshold_mm={nms_threshold_mm}, candidates={len(candidates)})"
+        )
         detected = []
         with torch.no_grad():
             for candidate in candidates:
@@ -175,10 +180,14 @@ class LungCancerDetectionSystem:
         return np.clip(score, 0.05, 0.98)
 
     def analyze_patient(self, ct_scan_path, detection_threshold=0.6,
-                        nms_threshold_mm=25.0):
+                        nms_threshold_mm=30.0):
         """Complete analysis: preprocess, detect, classify, and summarize."""
         from src.preprocessing.ct_preprocessor import preprocess_for_detection
 
+        print(
+            f"[DEBUG] analyze_patient(detection_threshold={detection_threshold}, "
+            f"nms_threshold_mm={nms_threshold_mm}, ct_scan_path={ct_scan_path})"
+        )
         t0 = time.time()
 
         candidates, ct_01, metadata, lung_mask = preprocess_for_detection(ct_scan_path)
